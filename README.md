@@ -2,11 +2,11 @@
 
 Alpha 1.0.1
 
-Updated 10 May 2021
+Updated 12 May 2021
 
-A low-latency stylus library for Chrome OS. This library provides
-mechanisms to reduce the touch-to-draw latency for Chrome Devices by
-using direct rendering and prediction.
+A low-latency stylus library for Android apps on Chrome OS. This library
+provides mechanisms to reduce the touch-to-draw latency on Chrome
+OS devices by using direct rendering and prediction.
 
 A simple demo app is provided showing both the CPU and GPU-driven
 low-latency implementations as well as a side-by-side comparison for
