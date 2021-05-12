@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  ~ Copyright (c) 2021 Google LLC
+  ~
+  ~ Licensed under the Apache License, Version 2.0 (the "License");
+  ~ you may not use this file except in compliance with the License.
+  ~ You may obtain a copy of the License at
+  ~
+  ~      https://www.apache.org/licenses/LICENSE-2.0
+  ~
+  ~ Unless required by applicable law or agreed to in writing, software
+  ~ distributed under the License is distributed on an "AS IS" BASIS,
+  ~ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  ~ See the License for the specific language governing permissions and
+  ~ limitations under the License.
+  -->
+
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <ImageButton
+        android:id="@+id/button_black"
+        android:layout_width="80dp"
+        android:layout_height="80dp"
+        android:layout_marginStart="16dp"
+        android:layout_marginBottom="16dp"
+        android:padding="4dp"
+        android:contentDescription="@string/accessibility_brush_black"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:srcCompat="@drawable/circle_black" />
+
+    <ImageButton
+        android:id="@+id/button_red"
+        android:layout_width="80dp"
+        android:layout_height="80dp"
+        android:layout_marginStart="16dp"
+        android:layout_marginBottom="16dp"
+        android:padding="4dp"
+        android:contentDescription="@string/accessibility_brush_red"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toEndOf="@+id/button_black"
+        app:srcCompat="@drawable/circle_red" />
+
+    <ImageButton
+        android:id="@+id/button_green"
+        android:layout_width="80dp"
+        android:layout_height="80dp"
+        android:layout_marginStart="16dp"
+        android:layout_marginBottom="16dp"
+        android:padding="4dp"
+        android:contentDescription="@string/accessibility_brush_green"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toEndOf="@+id/button_red"
+        app:srcCompat="@drawable/circle_green" />
+
+    <ImageButton
+        android:id="@+id/button_blue"
+        android:layout_width="80dp"
+        android:layout_height="80dp"
+        android:layout_marginStart="16dp"
+        android:layout_marginBottom="16dp"
+        android:padding="4dp"
+        android:contentDescription="@string/accessibility_brush_blue"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toEndOf="@+id/button_green"
+        app:srcCompat="@drawable/circle_blue" />
+
+    <TextView
+        android:id="@+id/text_label_prediction"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
+        android:layout_marginBottom="16dp"
+        android:text="@string/label_prediction"
+        android:textAppearance="@style/TextAppearance.AppCompat.Large"
+        app:layout_constraintBottom_toTopOf="@+id/button_black"
+        app:layout_constraintStart_toStartOf="@+id/button_black" />
+
+    <com.google.android.material.slider.Slider
+        android:id="@+id/slider_prediction"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="4dp"
+        android:stepSize="5"
+        android:textAlignment="center"
+        android:value="25"
+        android:valueFrom="0"
+        android:valueTo="200"
+        android:contentDescription="@string/accessibility_prediction"
+        app:layout_constraintBottom_toTopOf="@id/button_black"
+        app:layout_constraintEnd_toEndOf="@id/button_blue"
+        app:layout_constraintStart_toEndOf="@id/text_label_prediction" />
+
+
+</androidx.constraintlayout.widget.ConstraintLayout>

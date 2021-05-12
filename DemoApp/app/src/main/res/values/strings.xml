@@ -1,0 +1,40 @@
+<!--
+  ~ Copyright (c) 2021 Google LLC
+  ~
+  ~ Licensed under the Apache License, Version 2.0 (the "License");
+  ~ you may not use this file except in compliance with the License.
+  ~ You may obtain a copy of the License at
+  ~
+  ~      https://www.apache.org/licenses/LICENSE-2.0
+  ~
+  ~ Unless required by applicable law or agreed to in writing, software
+  ~ distributed under the License is distributed on an "AS IS" BASIS,
+  ~ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  ~ See the License for the specific language governing permissions and
+  ~ limitations under the License.
+  -->
+
+<resources>
+    <string name="app_name">Low Latency Stylus Demo</string>
+
+    <!-- UI labels -->
+    <string name="label_prediction">Prediction:</string>
+    <string name="label_regular_canvas">Regular</string>
+    <string name="label_low_latency_canvas">Low-Latency</string>
+
+    <!-- Launcher buttons -->
+    <string name="button_cpu" description="The text of the cpu library activity button [CHAR_LIMIT=NONE]">Low-latency Demo (CPU driven)</string>
+    <string name="button_cpu_compare" description="The text of the side-by-side CPU comparison activity button [CHAR_LIMIT=NONE]">Side-by-side comparison\nCPU vs None</string>
+    <string name="button_gpu" description="The text of the gpu library activity button [CHAR_LIMIT=NONE]">Low-latency Demo (GPU driven)</string>
+    <string name="button_gpu_compare" description="The text of the side-by-side GPU comparison activity button [CHAR_LIMIT=NONE]">Side-by-side comparison\nGPU vs None</string>
+
+    <!-- Accessibility descriptions -->
+    <string name="accessibility_brush_black">Black paint color</string>
+    <string name="accessibility_brush_red">Red paint color</string>
+    <string name="accessibility_brush_green">Green paint color</string>
+    <string name="accessibility_brush_blue">Blue paint color</string>
+    <string name="accessibility_prediction">Prediction target in milliseconds</string>
+    <string name="accessibility_low_latency_canvas">A low-latency drawing canvas</string>
+    <string name="accessibility_regular_canvas">A regular, not low-latency, drawing canvas</string>
+
+</resources>
