@@ -267,6 +267,9 @@ We appreciate you exercising this library and strongly value your
 feedback. Please file bugs and feature requests here on the issue
 tracker.
 
+<img alt="Screenshot of LowLatencyStylusDemo on a Chromebook" src="https://github.com/chromeos/low-latency-stylus/blob/main/images/screebshot.png" />
+
+
 ## This is not an officially supported Google product
 
 ## LICENSE
