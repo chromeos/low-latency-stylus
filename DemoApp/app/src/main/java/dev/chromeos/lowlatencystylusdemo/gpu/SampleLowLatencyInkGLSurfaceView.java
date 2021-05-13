@@ -152,8 +152,9 @@ public class SampleLowLatencyInkGLSurfaceView extends GLInkSurfaceView {
         @Override
         public Rect beforeDraw(GL10 unused, MotionEvent predictedEvent) {
             if (predictedEvent != null && mLastInkPoint != null) {
-                // Include the last predicted point in the damage rect
+                // Include the last real and last predicted point in the damage rect
                 addToScissor(mLastPredictedPoint);
+                addToScissor(mLastInkPoint);
 
                 // Start draw prediction from the last real point
                 PointF lastPoint = mLastInkPoint;
