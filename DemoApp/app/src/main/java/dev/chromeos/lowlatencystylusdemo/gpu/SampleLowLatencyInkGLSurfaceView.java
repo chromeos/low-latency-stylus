@@ -163,7 +163,7 @@ public class SampleLowLatencyInkGLSurfaceView extends GLInkSurfaceView {
                     PointF batchedPoint = new PointF(ev.getCoords()[0].x, ev.getCoords()[0].y);
 
                     // Lines will be drawn with GL_LINES so add lines in pairs of points
-                    addPredictedPoint(lastPoint);
+                    addPredictedPoint(lastPoint, false);
                     addPredictedPoint(batchedPoint);
 
                     lastPoint = batchedPoint;
@@ -171,7 +171,7 @@ public class SampleLowLatencyInkGLSurfaceView extends GLInkSurfaceView {
 
                 // Add the predicted point
                 PointF predictedPoint = new PointF(predictedEvent.getX(), predictedEvent.getY());
-                addPredictedPoint(lastPoint);
+                addPredictedPoint(lastPoint, false);
                 addPredictedPoint(predictedPoint);
 
                 // Keep track of the last predicted point for calculating damage
@@ -184,8 +184,16 @@ public class SampleLowLatencyInkGLSurfaceView extends GLInkSurfaceView {
          * Add a single predicted point to the brush shader and update the scissor
          */
         private void addPredictedPoint(PointF point) {
+            addPredictedPoint(point, true);
+        }
+        /**
+         * Add a single predicted point to the brush shader and optionally update the scissor
+         */
+        private void addPredictedPoint(PointF point, Boolean shouldAddToScissor) {
             mBrushShader.addPredictionVertex(getVertexFromPoint(point));
-            addToScissor(point);
+            if (shouldAddToScissor) {
+                addToScissor(point);
+            }
         }
 
         /**
