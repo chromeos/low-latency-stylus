@@ -254,6 +254,7 @@ Note: pressing `[SPACE]` will clear the canvas in the demo application.
 
 ## Known Issues
 
+* GPU prediction is currently not working in the demo.
 
 * Display scaling: in order to leverage direct compositing, the user
   needs to have their Chrome OS display resolution set to the “default”
