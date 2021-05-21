@@ -170,8 +170,6 @@ public class BrushShader {
 
         // Temporarily add the predicted points to the end of list
         addVertices(mPredictedVertex);
-        // Adjust count to match
-        // mVertexCount += mPredictedVertex.size();
 
         // Rewind buffer to the beginning for the draw
         mVertexBuffer.position(0);
@@ -208,7 +206,7 @@ public class BrushShader {
         GLES20.glDisableVertexAttribArray(mVertexAttribHandle);
         GLES20.glDisableVertexAttribArray(mColorHandle);
 
-        // Restore the original position/size of the Vertex buffer ("erasing" predicted gestures)
+        // Restore the original position/size of the Vertex buffer (excluding predicted lines)
         mVertexBuffer.position(tempPosition);
         mVertexCount = tempCount;
 

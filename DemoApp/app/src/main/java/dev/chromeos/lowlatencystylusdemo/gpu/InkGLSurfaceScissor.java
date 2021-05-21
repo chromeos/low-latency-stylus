@@ -23,9 +23,7 @@ import android.graphics.Rect;
  * and lower latency. Will be used as a glScissor.
  */
 public class InkGLSurfaceScissor {
-    // Add a "border" to the render box to ensure all pixels are captured, a smaller number can be
-    // more performant but needs to be large enough to cover prediction overdraws. 2 is acceptable
-    // prediction is disabled.
+    // Add a "border" to the render box to ensure all pixels are captured
     private static final int RENDER_BOX_OFFSET = ((int) BrushShader.BRUSH_SIZE) + 1;
     private Rect mScissorBox;
     private boolean mEmpty;
