@@ -53,6 +53,15 @@ public class InkGLSurfaceScissor {
     }
 
     /**
+     * Extend the current damage area to include the given Rect.
+     */
+    public void addRect(Rect rectToAdd) {
+        if (!rectToAdd.isEmpty()) {
+            mScissorBox.union(rectToAdd);
+        }
+    }
+
+    /**
      * Return the damage rectangle for use as a glScissor.
      *
      * @return Rect of damage area with a slightly larger "border" to guarantee correctness
