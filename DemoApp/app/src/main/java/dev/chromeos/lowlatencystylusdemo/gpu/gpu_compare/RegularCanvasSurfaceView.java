@@ -16,7 +16,7 @@
 
 package dev.chromeos.lowlatencystylusdemo.gpu.gpu_compare;
 
-import static dev.chromeos.lowlatencystylusdemo.gpu.SampleLowLatencyInkGLSurfaceView.INK_COLOR_BLACK;
+import static dev.chromeos.lowlatencystylusdemo.gpu.SampleGLInkSurfaceView.INK_COLOR_BLACK;
 
 import android.content.Context;
 import android.graphics.PointF;

@@ -40,7 +40,7 @@ public class LowLatencyStylusActivityGpu extends AppCompatActivity {
     private final ImageButton[] brushButtons = new ImageButton[NUM_BRUSHES];
 
     // The main drawing canvas
-    private SampleLowLatencyInkGLSurfaceView mGLInkSurfaceView;
+    private SampleGLInkSurfaceView mGLInkSurfaceView;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -55,7 +55,7 @@ public class LowLatencyStylusActivityGpu extends AppCompatActivity {
         if (ab != null) ab.setDisplayHomeAsUpEnabled(true);
 
         // Create a low latency GLSurfaceView and add it to the main canvas
-        mGLInkSurfaceView = new SampleLowLatencyInkGLSurfaceView(this);
+        mGLInkSurfaceView = new SampleGLInkSurfaceView(this);
         mainCanvas.addView(mGLInkSurfaceView);
 
         // Set up buttons
@@ -118,7 +118,7 @@ public class LowLatencyStylusActivityGpu extends AppCompatActivity {
     private void selectBrush(int selectedBrush) {
         switch (selectedBrush) {
             case BRUSH_RED:
-                mGLInkSurfaceView.mBrushColor = SampleLowLatencyInkGLSurfaceView.INK_COLOR_RED;
+                mGLInkSurfaceView.mBrushColor = SampleGLInkSurfaceView.INK_COLOR_RED;
                 brushButtons[BRUSH_BLACK].setBackgroundColor(Color.TRANSPARENT);
                 brushButtons[BRUSH_RED].setBackground(ContextCompat.getDrawable(
                         this, R.drawable.selected_circle));
@@ -127,7 +127,7 @@ public class LowLatencyStylusActivityGpu extends AppCompatActivity {
                 break;
 
             case BRUSH_GREEN:
-                mGLInkSurfaceView.mBrushColor = SampleLowLatencyInkGLSurfaceView.INK_COLOR_GREEN;
+                mGLInkSurfaceView.mBrushColor = SampleGLInkSurfaceView.INK_COLOR_GREEN;
                 brushButtons[BRUSH_BLACK].setBackgroundColor(Color.TRANSPARENT);
                 brushButtons[BRUSH_RED].setBackgroundColor(Color.TRANSPARENT);
                 brushButtons[BRUSH_GREEN].setBackground(ContextCompat.getDrawable(
@@ -136,7 +136,7 @@ public class LowLatencyStylusActivityGpu extends AppCompatActivity {
                 break;
 
             case BRUSH_BLUE:
-                mGLInkSurfaceView.mBrushColor = SampleLowLatencyInkGLSurfaceView.INK_COLOR_BLUE;
+                mGLInkSurfaceView.mBrushColor = SampleGLInkSurfaceView.INK_COLOR_BLUE;
                 brushButtons[BRUSH_BLACK].setBackgroundColor(Color.TRANSPARENT);
                 brushButtons[BRUSH_RED].setBackgroundColor(Color.TRANSPARENT);
                 brushButtons[BRUSH_GREEN].setBackgroundColor(Color.TRANSPARENT);
@@ -146,7 +146,7 @@ public class LowLatencyStylusActivityGpu extends AppCompatActivity {
 
             case BRUSH_BLACK:
             default:
-                mGLInkSurfaceView.mBrushColor = SampleLowLatencyInkGLSurfaceView.INK_COLOR_BLACK;
+                mGLInkSurfaceView.mBrushColor = SampleGLInkSurfaceView.INK_COLOR_BLACK;
                 brushButtons[BRUSH_BLACK].setBackground(ContextCompat.getDrawable(
                         this, R.drawable.selected_circle));
                 brushButtons[BRUSH_RED].setBackgroundColor(Color.TRANSPARENT);

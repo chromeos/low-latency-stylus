@@ -21,6 +21,7 @@ import android.graphics.PointF;
 import android.graphics.Rect;
 import android.opengl.GLES20;
 import android.opengl.Matrix;
+import android.util.Log;
 import android.view.MotionEvent;
 
 import androidx.annotation.NonNull;
@@ -39,7 +40,7 @@ import javax.microedition.khronos.opengles.GL10;
  * A low-latency SurfaceView that will manage input events and queue them appropriately to
  * a custom GLInkRenderer.
  */
-public class SampleLowLatencyInkGLSurfaceView extends GLInkSurfaceView {
+public class SampleGLInkSurfaceView extends GLInkSurfaceView {
     // Ink colors described in rgb float arrays, values range 0.0 -> 1.0
     public static final float[] INK_COLOR_RED = { 1.0f, 0.0f, 0.0f };
     public static final float[] INK_COLOR_GREEN = { 0.0f, 1.0f, 0.0f };
@@ -51,7 +52,7 @@ public class SampleLowLatencyInkGLSurfaceView extends GLInkSurfaceView {
 
     private final SampleInkRenderer mRenderer;
 
-    public SampleLowLatencyInkGLSurfaceView(Context context) {
+    public SampleGLInkSurfaceView(Context context) {
         super(context);
         mRenderer = new SampleInkRenderer();
 
@@ -107,7 +108,7 @@ public class SampleLowLatencyInkGLSurfaceView extends GLInkSurfaceView {
         private final float[] mModelMatrix;
         private final float[] mMVPMatrix;
         private PointF mLastInkPoint;
-        private PointF mLastPredictedPoint;
+        private Rect mPrevPredictionDamageRect;
 
         // The brush shader
         private BrushShader mBrushShader;
@@ -118,6 +119,7 @@ public class SampleLowLatencyInkGLSurfaceView extends GLInkSurfaceView {
             super();
             mMVPMatrix = new float[16];
             mModelMatrix = new float[16];
+            mPrevPredictionDamageRect = new Rect(0, 0, 0, 0);
             // For this demo, use the identity matrix
             Matrix.setIdentityM(mModelMatrix, 0);
         }
@@ -151,11 +153,9 @@ public class SampleLowLatencyInkGLSurfaceView extends GLInkSurfaceView {
         @NonNull
         @Override
         public Rect beforeDraw(GL10 unused, MotionEvent predictedEvent) {
+            // Include the last drawn point
+            addToScissor(mLastInkPoint);
             if (predictedEvent != null && mLastInkPoint != null) {
-                // Include the last real and last predicted point in the damage rect
-                addToScissor(mLastPredictedPoint);
-                addToScissor(mLastInkPoint);
-
                 // Start draw prediction from the last real point
                 PointF lastPoint = mLastInkPoint;
 
@@ -174,11 +174,16 @@ public class SampleLowLatencyInkGLSurfaceView extends GLInkSurfaceView {
                 PointF predictedPoint = new PointF(predictedEvent.getX(), predictedEvent.getY());
                 addPredictedPoint(lastPoint, false);
                 addPredictedPoint(predictedPoint);
-
-                // Keep track of the last predicted point for calculating damage
-                mLastPredictedPoint = predictedPoint;
             }
-            return new Rect(mScissor.getScissorBox());
+            // Get the current prediction damage rect
+            Rect newPredictionDamageRect = mScissor.getScissorBox();
+            // Include the previous prediction area this draw to ensure old lines are overwritten
+            addToScissor(mPrevPredictionDamageRect);
+            // Save the current prediction damage rect for the next draw
+            mPrevPredictionDamageRect = newPredictionDamageRect;
+
+            // mScissor contains current prediction area + previous prediction area
+            return mScissor.getScissorBox();
         }
 
         /**
@@ -233,8 +238,8 @@ public class SampleLowLatencyInkGLSurfaceView extends GLInkSurfaceView {
             if (mLastInkPoint == null) {
                 return;
             }
-            // Make sure scissor includes previously predicted points
-            addToScissor(mLastPredictedPoint);
+            // Make sure scissor includes previous prediction area
+            addToScissor(mPrevPredictionDamageRect);
 
             // Add new points, starting from the last drawn point
             addToScissor(mLastInkPoint);
@@ -250,8 +255,8 @@ public class SampleLowLatencyInkGLSurfaceView extends GLInkSurfaceView {
             if (mLastInkPoint == null) {
                 return;
             }
-            // Make sure scissor includes the previously predicted point
-            addToScissor(mLastPredictedPoint);
+            // Make sure scissor includes the previous prediction areas
+            addToScissor(mPrevPredictionDamageRect);
             // Add the line from the previous point to the last point of the gesture
             addToScissor(mLastInkPoint);
             addToScissor(point);
@@ -265,6 +270,13 @@ public class SampleLowLatencyInkGLSurfaceView extends GLInkSurfaceView {
             if (point == null) { return; }
             PointF p = applyMatrixToPoint(getViewMatrix(), point);
             mScissor.addPoint(p.x, p.y);
+        }
+
+        private void addToScissor(Rect rectToAdd) {
+            if (rectToAdd == null) { return; }
+            if (!rectToAdd.isEmpty()) {
+                mScissor.addRect(rectToAdd);
+            }
         }
 
         private void addVertex(PointF point) {

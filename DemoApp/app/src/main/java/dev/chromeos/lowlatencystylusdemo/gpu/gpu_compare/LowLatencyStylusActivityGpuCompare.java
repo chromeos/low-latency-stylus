@@ -31,7 +31,7 @@ import androidx.core.content.ContextCompat;
 import com.google.android.material.slider.Slider;
 
 import dev.chromeos.lowlatencystylusdemo.R;
-import dev.chromeos.lowlatencystylusdemo.gpu.SampleLowLatencyInkGLSurfaceView;
+import dev.chromeos.lowlatencystylusdemo.gpu.SampleGLInkSurfaceView;
 
 public class LowLatencyStylusActivityGpuCompare extends AppCompatActivity {
     // Brush buttons
@@ -41,7 +41,7 @@ public class LowLatencyStylusActivityGpuCompare extends AppCompatActivity {
 
     // The drawing canvases
     private RegularCanvasSurfaceView mRegularCanvasSurfaceView;
-    private SampleLowLatencyInkGLSurfaceView mGLInkSurfaceView;
+    private SampleGLInkSurfaceView mGLInkSurfaceView;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -61,7 +61,7 @@ public class LowLatencyStylusActivityGpuCompare extends AppCompatActivity {
         regularCanvas.addView(mRegularCanvasSurfaceView);
 
         // Create a low latency GLSurfaceView and add it
-        mGLInkSurfaceView = new SampleLowLatencyInkGLSurfaceView(this);
+        mGLInkSurfaceView = new SampleGLInkSurfaceView(this);
         lowLatencyCanvas.addView(mGLInkSurfaceView);
 
         // Set up buttons
@@ -125,8 +125,8 @@ public class LowLatencyStylusActivityGpuCompare extends AppCompatActivity {
     private void selectBrush(int selectedBrush) {
         switch (selectedBrush) {
             case BRUSH_RED:
-                mGLInkSurfaceView.mBrushColor = SampleLowLatencyInkGLSurfaceView.INK_COLOR_RED;
-                mRegularCanvasSurfaceView.inkStrokeColor = SampleLowLatencyInkGLSurfaceView.INK_COLOR_RED;
+                mGLInkSurfaceView.mBrushColor = SampleGLInkSurfaceView.INK_COLOR_RED;
+                mRegularCanvasSurfaceView.inkStrokeColor = SampleGLInkSurfaceView.INK_COLOR_RED;
                 brushButtons[BRUSH_BLACK].setBackgroundColor(Color.TRANSPARENT);
                 brushButtons[BRUSH_RED].setBackground(ContextCompat.getDrawable(
                         this, R.drawable.selected_circle));
@@ -135,8 +135,8 @@ public class LowLatencyStylusActivityGpuCompare extends AppCompatActivity {
                 break;
 
             case BRUSH_GREEN:
-                mGLInkSurfaceView.mBrushColor = SampleLowLatencyInkGLSurfaceView.INK_COLOR_GREEN;
-                mRegularCanvasSurfaceView.inkStrokeColor = SampleLowLatencyInkGLSurfaceView.INK_COLOR_GREEN;
+                mGLInkSurfaceView.mBrushColor = SampleGLInkSurfaceView.INK_COLOR_GREEN;
+                mRegularCanvasSurfaceView.inkStrokeColor = SampleGLInkSurfaceView.INK_COLOR_GREEN;
                 brushButtons[BRUSH_BLACK].setBackgroundColor(Color.TRANSPARENT);
                 brushButtons[BRUSH_RED].setBackgroundColor(Color.TRANSPARENT);
                 brushButtons[BRUSH_GREEN].setBackground(ContextCompat.getDrawable(
@@ -145,8 +145,8 @@ public class LowLatencyStylusActivityGpuCompare extends AppCompatActivity {
                 break;
 
             case BRUSH_BLUE:
-                mGLInkSurfaceView.mBrushColor = SampleLowLatencyInkGLSurfaceView.INK_COLOR_BLUE;
-                mRegularCanvasSurfaceView.inkStrokeColor = SampleLowLatencyInkGLSurfaceView.INK_COLOR_BLUE;
+                mGLInkSurfaceView.mBrushColor = SampleGLInkSurfaceView.INK_COLOR_BLUE;
+                mRegularCanvasSurfaceView.inkStrokeColor = SampleGLInkSurfaceView.INK_COLOR_BLUE;
                 brushButtons[BRUSH_BLACK].setBackgroundColor(Color.TRANSPARENT);
                 brushButtons[BRUSH_RED].setBackgroundColor(Color.TRANSPARENT);
                 brushButtons[BRUSH_GREEN].setBackgroundColor(Color.TRANSPARENT);
@@ -156,8 +156,8 @@ public class LowLatencyStylusActivityGpuCompare extends AppCompatActivity {
 
             case BRUSH_BLACK:
             default:
-                mGLInkSurfaceView.mBrushColor = SampleLowLatencyInkGLSurfaceView.INK_COLOR_BLACK;
-                mRegularCanvasSurfaceView.inkStrokeColor = SampleLowLatencyInkGLSurfaceView.INK_COLOR_BLACK;
+                mGLInkSurfaceView.mBrushColor = SampleGLInkSurfaceView.INK_COLOR_BLACK;
+                mRegularCanvasSurfaceView.inkStrokeColor = SampleGLInkSurfaceView.INK_COLOR_BLACK;
                 brushButtons[BRUSH_BLACK].setBackground(ContextCompat.getDrawable(
                         this, R.drawable.selected_circle));
                 brushButtons[BRUSH_RED].setBackgroundColor(Color.TRANSPARENT);
