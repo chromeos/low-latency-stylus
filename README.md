@@ -2,7 +2,7 @@
 
 Alpha 1.0.1
 
-Updated 12 May 2021
+Updated 8 June 2021
 
 A low-latency stylus library for Android apps on Chrome OS. This library
 provides mechanisms to reduce the touch-to-draw latency on Chrome
@@ -254,7 +254,11 @@ Note: pressing `[SPACE]` will clear the canvas in the demo application.
 
 ## Known Issues
 
-* GPU prediction is currently not working in the demo.
+* The GPU prediction target is fixed at 25ms for Android runtime
+  versions < 7434780. Adjusting the slider in the demo or using
+  `setPredictionTargetMs` will have no effect on these versions. To
+  check this, go to chrome://version in the browser and read the ARC
+  line. It should work correctly on ARC versions >= 7434780.
 
 * Display scaling: in order to leverage direct compositing, the user
   needs to have their Chrome OS display resolution set to the “default”
