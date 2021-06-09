@@ -69,7 +69,8 @@ Demo applications and instructions are provided for both versions of the
 library.
 
 
->**NOTE:** your Android runtime version on Chrome OS must be greater
+>**NOTE:** To use the library, you will need Chrome OS version M91 or
+>greater and an Android runtime (ARC) version greater
 >than 7316937. To check this, go to chrome://version in the browser and
 >read the ARC line. You may need to change your device's update channel
 >to the beta channel or dev channel to get this version.
@@ -254,11 +255,12 @@ Note: pressing `[SPACE]` will clear the canvas in the demo application.
 
 ## Known Issues
 
-* The GPU prediction target is fixed at 25ms for Android runtime
-  versions < 7434780. Adjusting the slider in the demo or using
-  `setPredictionTargetMs` will have no effect on these versions. To
-  check this, go to chrome://version in the browser and read the ARC
-  line. It should work correctly on ARC versions >= 7434780.
+* Prior to Chrome OS version M93 and Android runtime version 7434780,
+  the GPU prediction target was fixed at 25ms. Adjusting the slider in
+  the demo app or using `setPredictionTargetMs` will have no effect on
+  these versions. To check your OS and Android runtime (ARC) versions,
+  go to chrome://version in the browser. GPU prediction should work
+  correctly on Chrome OS M93+ and ARC versions >= 7434780.
 
 * Display scaling: in order to leverage direct compositing, the user
   needs to have their Chrome OS display resolution set to the “default”
