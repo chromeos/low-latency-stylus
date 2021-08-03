@@ -16,57 +16,34 @@
 
 package dev.chromeos.lowlatencystylusdemo.gpu;
 
+import static android.opengl.GLES20.GL_FLOAT;
+import static android.opengl.GLES20.GL_TRIANGLES;
+import static android.opengl.GLES20.GL_UNSIGNED_INT;
+
+import static dev.chromeos.lowlatencystylusdemo.gpu.DrawPoints.NUM_INDICES_PER_SQUARE;
+import static dev.chromeos.lowlatencystylusdemo.gpu.DrawPoints.TEXTURE_COLOR_SIZE;
+import static dev.chromeos.lowlatencystylusdemo.gpu.DrawPoints.TEXTURE_COORDINATE_SIZE;
+
+import android.graphics.Bitmap;
 import android.opengl.GLES20;
 import android.opengl.GLException;
+import android.opengl.GLUtils;
 import android.util.Log;
 
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
-import java.nio.FloatBuffer;
-import java.nio.IntBuffer;
-import java.util.ArrayList;
-import java.util.List;
+import javax.microedition.khronos.opengles.GL10;
 
 /**
- * Handles the OpenGL rendering of a brush stroke*
+ * Handles the OpenGL rendering of a brush stroke
+ *
+ * Applies the matrix transformation and colours the stroke with the a_color information
  */
 public class BrushShader {
-    // A vertex in this sample is a 2D-point followed by float RGB color values, range: 0.0 - 1.0
-    public static class Vertex {
-        public static final int FLOAT_SIZE = 4;
-        public static final int POSITION_DIM = 2;
-        public static final int COLOR_DIM = 3;
-        public static final int TOTAL_DIM = POSITION_DIM + COLOR_DIM;
-        public static final int POSITION_SIZE = POSITION_DIM * FLOAT_SIZE;
-        public static final int COLOR_SIZE = COLOR_DIM * FLOAT_SIZE;
-        public static final int TOTAL_SIZE = POSITION_SIZE + COLOR_SIZE;
-        public static final int POSITION_OFFSET = 0;
-        public static final int COLOR_OFFSET = POSITION_OFFSET + POSITION_SIZE;
-        public float[] data = new float[TOTAL_DIM];
-
-        public Vertex(float x, float y) {
-            data[0] = x;
-            data[1] = y;
-            data[2] = .0f;
-            data[3] = .0f;
-            data[4] = .0f;
-        }
-
-        public void setColor(float r, float g, float b) {
-            data[2] = r;
-            data[3] = g;
-            data[4] = b;
-        }
-    }
-
     public static final float BRUSH_SIZE = 3.5f;
-    private static final int DEFAULT_BUFFER_SIZE = 512;
-
     private static final String TAG = "InkStrokeRenderer";
     private static final String VERTEX_SHADER =
-            "attribute vec3 a_color;\n"
+            "attribute vec4 a_color;\n"
                     + "attribute vec4 a_position;\n"
-                    + "varying vec3 v_color;\n"
+                    + "varying vec4 v_color;\n"
                     + "uniform mat4 u_mvp;\n"
                     + "void main() {\n"
                     + "  vec4 pointPos = u_mvp * a_position;\n"
@@ -76,189 +53,277 @@ public class BrushShader {
 
     private static final String FRAG_SHADER =
             "precision mediump float;\n"
-                    + "varying vec3 v_color;\n"
+                    + "varying vec4 v_color;\n"
                     + "void main() {\n"
-                    + "  gl_FragColor = vec4(v_color, 1.0);\n"
+                    + "  gl_FragColor = v_color;\n"
                     + "}\n";
 
-    // Shader program
-    private final int mProgram;
-    // Handle for "a_position".
-    private final int mVertexAttribHandle;
-    // Handle for "v_color".
-    private final int mColorHandle;
-    // Handle for "u_mvp".
-    private final int mMVPHandle;
+    /**
+     * The Bitmap-based Brush shaders take in a bitmap file. For a pure black color, the fragment
+     * shader uses the selected brush color and bitmap transparency. All colors in the bitmap
+     * are ignored.
+     *
+     * Note: bitmap transparency is stepped to be either 0% or 100% to prevent unexpected darkening
+     * due front/back-buffer rendering.
+     *
+     * TODO: allow for proper transparency in bitmap brushes
+     */
+    private static final String BITMAP_BRUSH_VERTEX_SHADER =
+                      "attribute vec4 a_color;\n"
+                    + "attribute vec4 a_position;\n"
+                    + "uniform mat4 u_mvp;\n"
+                    + "varying vec4 v_color;\n"
+                    + "attribute vec2 a_texture_coord;\n"
+                    + "varying vec2 v_texture_coord_from_shader;\n"
+                    + "void main() {\n"
+                    + "  vec4 pointPos = u_mvp * a_position;\n"
+                    + "  v_color = a_color;\n"
+                    + "  gl_Position = vec4(pointPos.xy, 0.0, 1.0);\n"
+                    + "  v_texture_coord_from_shader = vec2(a_texture_coord.x, a_texture_coord.y);\n"
+                    + "}\n";
 
-    // Reference to the buffer used by GL to draw the vertices
-    private final int mGLVertexBufferHandle;
-    private final List<Vertex> mPredictedVertex;
+    private static final String BITMAP_BRUSH_FRAG_SHADER =
+                  "precision mediump float;\n"
+                + "uniform sampler2D texture_sampler;\n"
+                + "varying vec4 v_color;\n"
+                + "varying vec2 v_texture_coord_from_shader;\n"
+                    + "void main() {\n"
+                    + "  vec4 tex_color = texture2D(texture_sampler, v_texture_coord_from_shader);\n"
+                          + "  // Only use alpha value from bitmap to indicate draw area\n"
+                          + "  // Step alpha 0 or 1 to avoid unintended lightening/darkening\n"
+                          + "  float tex_alpha = step(0.4, tex_color.a);\n"
+                          + "  gl_FragColor = v_color * tex_alpha; // color the bitmap\n"
+                    + "}\n";
 
-    // Buffer to hold Vertex's of drawn points. Will not contain predicted points
-    private FloatBuffer mVertexBuffer;
-    // Number of Vertex's in the current buffer
-    private int mVertexCount;
-    // Size (in Vertex count) currently allocated to the VertexBuffer
-    private int mVertexBufferSize = DEFAULT_BUFFER_SIZE;
+    // Shader programs and variable handles
+    private final int mLineProgram;
+    private final int mLineVertexHandle; // a_position
+    private final int mLineColorHandle; // a_color
+    private final int mLineMVPHandle; // u_mvp
+
+    private final int mSprayPaintProgram;
+    private final int mSprayPaintVertexHandle; // a_position
+    private final int mSprayPaintTextureHandle; // a_texture_coord
+    private final int mSprayPaintColorHandle; // a_color
+    private final int mSprayPaintMVPHandle; // u_mvp
+
+
+    // Spraypaint bitmap texture
+    private boolean useSprayPaint = false;
+    private boolean isSprayPaintTextureInitialized = false;
+    private int[] sprayPaintTextures = new int[1];
+    public void initSprayPaintTexture(GL10 gl, Bitmap bitmap) {
+        gl.glGenTextures(1, sprayPaintTextures, 0);
+        gl.glBindTexture(GL10.GL_TEXTURE_2D, sprayPaintTextures[0]);
+        gl.glTexParameterf(GL10.GL_TEXTURE_2D, GL10.GL_TEXTURE_MIN_FILTER, GL10.GL_NEAREST);
+        gl.glTexParameterf(GL10.GL_TEXTURE_2D, GL10.GL_TEXTURE_MAG_FILTER, GL10.GL_NEAREST);
+        gl.glTexParameterf(GL10.GL_TEXTURE_2D, GL10.GL_TEXTURE_WRAP_S, GL10.GL_CLAMP_TO_EDGE);
+        gl.glTexParameterf(GL10.GL_TEXTURE_2D, GL10.GL_TEXTURE_WRAP_T, GL10.GL_CLAMP_TO_EDGE);
+        gl.glClearColor(1f, 1f, 1f, 1f);
+        gl.glEnable(GL10.GL_BLEND);
+        gl.glBlendFunc(GL10.GL_SRC_ALPHA, GL10.GL_ONE_MINUS_SRC_ALPHA);
+        GLUtils.texImage2D(GL10.GL_TEXTURE_2D, 0, bitmap, 0);
+        isSprayPaintTextureInitialized = true;
+    }
+
+    /**
+     *
+     * @param useSprayPaint enable or disable spraypaint
+     * @return true if enable/disable was successful. Return false if spray paint texture has not
+     * been previously initialized with initSprayPaintTexture
+     */
+    public boolean enableSprayPaint(boolean useSprayPaint) {
+        // If spray paint bitmap not loaded, do not engage spray paint
+        if (!isSprayPaintTextureInitialized) {
+            useSprayPaint = false;
+            return false;
+        }
+        this.useSprayPaint = useSprayPaint;
+        return true;
+    }
+
+    private final DrawPoints mDrawPoints = new DrawPoints();
 
     public BrushShader() {
-        // List of predicted points
-        mPredictedVertex = new ArrayList<>();
 
-        // Set up the draw buffer
-        ByteBuffer bb = ByteBuffer.allocateDirect(mVertexBufferSize * Vertex.TOTAL_SIZE);
-        bb.order(ByteOrder.nativeOrder());
-        mVertexBuffer = bb.asFloatBuffer();
-        mVertexBuffer.position(0);
-
-        // Create the shader program.
-        mProgram = GLES20.glCreateProgram();
-        if (mProgram == 0) {
-            checkGlError("Error creating a new shader program");
-        }
-
-        // Load the vertex shader.
-        final int vertexShader = loadShader(GLES20.GL_VERTEX_SHADER, VERTEX_SHADER);
-        // Load the fragment shader.
-        final int fragmentShader = loadShader(GLES20.GL_FRAGMENT_SHADER, FRAG_SHADER);
-
-        // Attach the vertex shader to the shader program.
-        GLES20.glAttachShader(mProgram, vertexShader);
-        checkGlError("Error attaching the vertex shader");
-
-        // Attach the fragment shader to the shader program.
-        GLES20.glAttachShader(mProgram, fragmentShader);
-        checkGlError("Error attaching the fragment shader");
-
-        // Link the shader program.
-        GLES20.glLinkProgram(mProgram);
-        checkGlError("Error linking the shader program");
-
-        // Link the shader program variables to handles
-        mColorHandle = GLES20.glGetAttribLocation(mProgram, "a_color");
-        mVertexAttribHandle = GLES20.glGetAttribLocation(mProgram, "a_position");
-        mMVPHandle = GLES20.glGetUniformLocation(mProgram, "u_mvp");
+        // Create line shader and connect shader variables to handles
+        mLineProgram = createLineShader();
+        mLineColorHandle = GLES20.glGetAttribLocation(mLineProgram, "a_color");
+        mLineVertexHandle = GLES20.glGetAttribLocation(mLineProgram, "a_position");
+        mLineMVPHandle = GLES20.glGetUniformLocation(mLineProgram, "u_mvp");
         checkGlError("GL Get Locations");
 
-        // Allocate space for the Vertex buffer (will auto-grow as needed in addVertex)
-        IntBuffer tmp = IntBuffer.allocate(1);
-        GLES20.glGenBuffers(1, tmp);
-        mGLVertexBufferHandle = tmp.get();
-        mVertexBufferSize = DEFAULT_BUFFER_SIZE;
+        // Create spray paint shader and connect shader variables to handles
+        mSprayPaintProgram = createSprayPaintShader();
+        mSprayPaintColorHandle = GLES20.glGetAttribLocation(mSprayPaintProgram, "a_color");
+        mSprayPaintVertexHandle = GLES20.glGetAttribLocation(mSprayPaintProgram, "a_position");
+        mSprayPaintTextureHandle = GLES20.glGetAttribLocation(mSprayPaintProgram, "a_texture_coord");
+        mSprayPaintMVPHandle = GLES20.glGetUniformLocation(mSprayPaintProgram, "u_mvp");
+        checkGlError("GL Get Locations");
     }
 
     /**
      * Perform the draw
      *
-     * mVertexBuffer holds real gestures already made. mPredictedVertex holds predicted gestures
-     * for the current stroke. Before drawing, add the predicted gestures to mVertexBuffer, draw
-     * them, and then remove them. This wil ensure predicted gestures are "replaced" by real
-     * gestures in the next frame.
+     * mDrawPoints contains all the completed brush strokes and, separately, the predicted strokes.
+     * Before drawing, added predicted strokes to the draw list temporarily and removed the after
+     * the draw is finished.
      *
      * @param matrix MVP matrix (Model-View-Projection) used for current buffer
      */
     public void draw(float[] matrix) {
         // If nothing to draw, exit early
-        if (mVertexCount == 0) {
+        if (mDrawPoints.count() == 0) {
             return;
         }
 
         // Current number of non-predicted points
-        int tempCount = mVertexCount;
-        // Current position at the end of the Vertex buffer
-        int tempPosition = mVertexBuffer.position();
+        int tempVertexCount = mDrawPoints.count();
 
-        // Temporarily add the predicted points to the end of list
-        addVertices(mPredictedVertex);
+        // Remember current position at the end of the Vertex/Square buffers
+        int tempVertexPosition = mDrawPoints.mVertexBuffer.position();
+        int tempSquarePosition = mDrawPoints.mSquareBuffer.position();
+        int tempTextureColorPosition = mDrawPoints.mTextureColorBuffer.position();
+        int tempTextureCoordinatePosition = mDrawPoints.mTextureCoordinateBuffer.position();
+        int tempSquareIndexPosition = mDrawPoints.mSquareIndexBuffer.position();
 
-        // Rewind buffer to the beginning for the draw
-        mVertexBuffer.position(0);
-        // Skip the error check here because "draw" is a performance critical operation
-        GLES20.glUseProgram(mProgram);
+        // Spray paint shader
+        if (useSprayPaint) {
+            // Temporarily add the predicted points to the end of the draw list
+            mDrawPoints.addPredictedDrawPointsForDraw(mDrawPoints.mPredictedDrawPoints);
 
-        // Draw the vertices into the GL vertex buffer, including the predicted ones
-        GLES20.glBindBuffer(GLES20.GL_ARRAY_BUFFER, mGLVertexBufferHandle);
-        GLES20.glBufferData(
-                GLES20.GL_ARRAY_BUFFER, mVertexCount * Vertex.TOTAL_SIZE, mVertexBuffer, GLES20.GL_STATIC_DRAW);
+            GLES20.glUseProgram(mSprayPaintProgram);
 
-        // Prepare the triangle coordinate data
-        GLES20.glVertexAttribPointer(
-                mVertexAttribHandle,
-                Vertex.POSITION_DIM,
-                GLES20.GL_FLOAT,
-                false,
-                Vertex.TOTAL_SIZE,
-                Vertex.POSITION_OFFSET);
-        GLES20.glEnableVertexAttribArray(mVertexAttribHandle);
+            // Skip the error check here because "draw" is a performance critical operation
+            // checkGlError("GL Error in draw()");
 
-        GLES20.glVertexAttribPointer(
-                mColorHandle,
-                Vertex.COLOR_DIM,
-                GLES20.GL_FLOAT,
-                false,
-                Vertex.TOTAL_SIZE,
-                Vertex.COLOR_OFFSET);
-        GLES20.glEnableVertexAttribArray(mColorHandle);
-        GLES20.glUniformMatrix4fv(mMVPHandle, 1, false, matrix, 0);
+            // Indices for glDrawElements
+            GLES20.glBindBuffer(GLES20.GL_ELEMENT_ARRAY_BUFFER, mDrawPoints.mGLSquareIndexBufferHandle);
+            GLES20.glBufferData(
+                    GLES20.GL_ELEMENT_ARRAY_BUFFER, mDrawPoints.count() * DrawPoints.SQUARE_INDICES_SIZE, mDrawPoints.mSquareIndexBuffer.getRawByteBuffer(), GLES20.GL_STATIC_DRAW);
 
-        GLES20.glLineWidth(BRUSH_SIZE);
-        GLES20.glDrawArrays(GLES20.GL_LINES, 0, mVertexCount);
-        GLES20.glDisableVertexAttribArray(mVertexAttribHandle);
-        GLES20.glDisableVertexAttribArray(mColorHandle);
+            // Vertices, including the prediction
+            GLES20.glBindBuffer(GLES20.GL_ARRAY_BUFFER, mDrawPoints.mGLSquareBufferHandle);
+            GLES20.glBufferData(
+                    GLES20.GL_ARRAY_BUFFER, mDrawPoints.count() * DrawPoints.Square.TOTAL_SIZE, mDrawPoints.mSquareBuffer.getRawByteBuffer(), GLES20.GL_STATIC_DRAW);
+            GLES20.glVertexAttribPointer(
+                    mSprayPaintVertexHandle,
+                    2,
+                    GL_FLOAT,
+                    false,
+                    0,
+                    0);
+            GLES20.glEnableVertexAttribArray(mSprayPaintVertexHandle);
 
-        // Restore the original position/size of the Vertex buffer (excluding predicted lines)
-        mVertexBuffer.position(tempPosition);
-        mVertexCount = tempCount;
+            // Texture coords
+            GLES20.glBindBuffer(GLES20.GL_ARRAY_BUFFER, mDrawPoints.mGLTextureCoordinateBufferHandle);
+            GLES20.glBufferData(
+                    GLES20.GL_ARRAY_BUFFER, mDrawPoints.count() * TEXTURE_COORDINATE_SIZE, mDrawPoints.mTextureCoordinateBuffer.getRawByteBuffer(), GLES20.GL_STATIC_DRAW);
+            GLES20.glVertexAttribPointer(
+                    mSprayPaintTextureHandle,
+                    2,
+                    GL_FLOAT,
+                    false,
+                    0,
+                    0);
+            GLES20.glEnableVertexAttribArray(mSprayPaintTextureHandle);
 
-        // Clear predicted lines after they've been drawn
-        mPredictedVertex.clear();
-    }
+            // Brush colors
+            GLES20.glBindBuffer(GLES20.GL_ARRAY_BUFFER, mDrawPoints.mGLTextureColorBufferHandle);
+            GLES20.glBufferData(
+                    GLES20.GL_ARRAY_BUFFER, mDrawPoints.count() * TEXTURE_COLOR_SIZE, mDrawPoints.mTextureColorBuffer.getRawByteBuffer(), GLES20.GL_STATIC_DRAW);
+            GLES20.glVertexAttribPointer(
+                    mSprayPaintColorHandle,
+                    4,
+                    GL_FLOAT,
+                    false,
+                    0,
+                    0);
+            GLES20.glEnableVertexAttribArray(mSprayPaintColorHandle);
 
-    // Add a Vertex to the Vertex buffer, grow as required
-    public void addVertex(Vertex vertex) {
-        mVertexBuffer.put(vertex.data);
-        mVertexCount++;
-        growSizeAndReallocate();
-    }
+            // Enable the MVP matrix
+            GLES20.glUniformMatrix4fv(mSprayPaintMVPHandle, 1, false, matrix, 0);
 
-    public void addVertices(Iterable<Vertex> vertices) {
-        for (Vertex v : vertices) {
-            addVertex(v);
+            // Draw the bitmap textures
+            GLES20.glActiveTexture(GL10.GL_TEXTURE0);
+            GLES20.glBindTexture(GL10.GL_TEXTURE_2D, sprayPaintTextures[0]);
+            GLES20.glDrawElements( GL_TRIANGLES, mDrawPoints.count() * NUM_INDICES_PER_SQUARE, GL_UNSIGNED_INT, 0);
+
+            GLES20.glDisableVertexAttribArray(mSprayPaintVertexHandle);
+            GLES20.glDisableVertexAttribArray(mSprayPaintTextureHandle);
+            GLES20.glDisableVertexAttribArray(mSprayPaintColorHandle);
+
+        } else { // Else draw with the regular line shader
+            // Temporarily add the predicted points to the end of the draw list
+            mDrawPoints.addPredictedVerticesForDraw(mDrawPoints.mPredictedVertices);
+
+            GLES20.glUseProgram(mLineProgram);
+
+            // Skip the error check here because "draw" is a performance critical operation
+            // checkGlError("GL Error in draw()");
+
+            // Draw the vertices into the GL vertex buffer, including the predicted ones
+            // 2 * draw points for GL_LINES (each vertex needs start and finish point)
+            GLES20.glBindBuffer(GLES20.GL_ARRAY_BUFFER, mDrawPoints.mGLVertexBufferHandle);
+            GLES20.glBufferData(
+                    GLES20.GL_ARRAY_BUFFER, mDrawPoints.count() * 2 * DrawPoints.Vertex.TOTAL_SIZE, mDrawPoints.mVertexBuffer.getRawByteBuffer(), GLES20.GL_STATIC_DRAW);
+
+            // Prepare the triangle coordinate data
+            GLES20.glVertexAttribPointer(
+                    mLineVertexHandle,
+                    DrawPoints.Vertex.POSITION_DIM,
+                    GL_FLOAT,
+                    false,
+                    DrawPoints.Vertex.TOTAL_SIZE,
+                    DrawPoints.Vertex.POSITION_OFFSET);
+            GLES20.glEnableVertexAttribArray(mLineVertexHandle);
+
+            // Color info
+            GLES20.glVertexAttribPointer(
+                    mLineColorHandle,
+                    DrawPoints.Vertex.COLOR_DIM,
+                    GL_FLOAT,
+                    false,
+                    DrawPoints.Vertex.TOTAL_SIZE,
+                    DrawPoints.Vertex.COLOR_OFFSET);
+            GLES20.glEnableVertexAttribArray(mLineColorHandle);
+
+            // Enable the MVP matrix
+            GLES20.glUniformMatrix4fv(mLineMVPHandle, 1, false, matrix, 0);
+
+            // Note: OpenGL does not need to respect brush size > 1px
+            // 2 * draw points for GL_LINES (each vertex needs start and finish point)
+            GLES20.glLineWidth(BRUSH_SIZE);
+            GLES20.glDrawArrays(GLES20.GL_LINES, 0, mDrawPoints.count() * 2);
+
+            GLES20.glDisableVertexAttribArray(mLineVertexHandle);
+            GLES20.glDisableVertexAttribArray(mLineColorHandle);
         }
+
+        // Restore the original position/size of the Vertex buffer (to remove predicted lines)
+        mDrawPoints.mVertexBuffer.position(tempVertexPosition);
+        mDrawPoints.mSquareBuffer.position(tempSquarePosition);
+        mDrawPoints.mTextureCoordinateBuffer.position(tempTextureCoordinatePosition);
+        mDrawPoints.mTextureColorBuffer.position(tempTextureColorPosition);
+        mDrawPoints.mSquareIndexBuffer.position(tempSquareIndexPosition);
+        mDrawPoints.count(tempVertexCount);
+
+        // Clear predicted strokes from the prediction lists after they've been drawn
+        mDrawPoints.clearPrediction();
     }
 
-    public void addPredictionVertex(Vertex v) {
-        mPredictedVertex.add(v);
+    // Pass-through functions for drawing points' buffer and array management
+    public void addDrawPoint(DrawPoint drawPoint) {
+        mDrawPoints.addDrawPoint(drawPoint);
     }
-
-    // reset buffers
+    public void addPredictionDrawPoint(DrawPoint drawPoint) {
+        mDrawPoints.addPredictionDrawPoint(drawPoint);
+    }
     public void clear() {
-        clearPrediction();
-        mVertexBuffer.position(0);
-        mVertexCount = 0;
+        mDrawPoints.clear();
     }
-
-    private void clearPrediction() {
-        mPredictedVertex.clear();
-    }
-
-    private void growSizeAndReallocate() {
-        if (mVertexCount < mVertexBufferSize) {
-            return;
-        }
-        ByteBuffer buffer = ByteBuffer.allocateDirect(
-                2 * mVertexBufferSize * Vertex.TOTAL_SIZE);
-        buffer.order(ByteOrder.nativeOrder());
-        FloatBuffer newBuffer = buffer.asFloatBuffer();
-        newBuffer.position(0);
-
-        int oldPosition = mVertexBuffer.position();
-        mVertexBuffer.position(0);
-        newBuffer.put(mVertexBuffer);
-        mVertexBuffer = newBuffer;
-        mVertexBuffer.position(oldPosition);
-
-        mVertexBufferSize = 2 * mVertexBufferSize;
+    public void endLine() {
+        mDrawPoints.endStroke();
     }
 
     /**
@@ -293,11 +358,66 @@ public class BrushShader {
         return shader;
     }
 
+    private int createLineShader() {
+        // Create the line shader program.
+        int lineProgram = GLES20.glCreateProgram();
+        if (lineProgram == 0) {
+            checkGlError("Error creating line shader program");
+        }
+
+        // Load the vertex shader.
+        final int vertexShader = loadShader(GLES20.GL_VERTEX_SHADER, VERTEX_SHADER);
+        // Load the fragment shader.
+        final int fragmentShader = loadShader(GLES20.GL_FRAGMENT_SHADER, FRAG_SHADER);
+
+        // Attach the vertex shader to the shader program.
+        GLES20.glAttachShader(lineProgram, vertexShader);
+        checkGlError("Error attaching the vertex shader");
+
+        // Attach the fragment shader to the shader program.
+        GLES20.glAttachShader(lineProgram, fragmentShader);
+        checkGlError("Error attaching the fragment shader");
+
+        // Link the shader program.
+        GLES20.glLinkProgram(lineProgram);
+        checkGlError("Error linking the shader program");
+
+        return lineProgram;
+    }
+
+    private int createSprayPaintShader() {
+        // Init spray paint shader
+        // Create the spray paint shader program.
+        int sprayPaintProgram = GLES20.glCreateProgram();
+        if (sprayPaintProgram == 0) {
+            checkGlError("Error creating a spray paint shader program");
+        }
+
+        // Load the vertex shader.
+        final int sprayVertexShader = loadShader(GLES20.GL_VERTEX_SHADER, BITMAP_BRUSH_VERTEX_SHADER);
+        // Load the fragment shader.
+        final int sprayFragmentShader = loadShader(GLES20.GL_FRAGMENT_SHADER, BITMAP_BRUSH_FRAG_SHADER);
+
+        // Attach the vertex shader to the shader program.
+        GLES20.glAttachShader(sprayPaintProgram, sprayVertexShader);
+        checkGlError("Error attaching the vertex shader");
+
+        // Attach the fragment shader to the shader program.
+        GLES20.glAttachShader(sprayPaintProgram, sprayFragmentShader);
+        checkGlError("Error attaching the fragment shader");
+
+        // Link the shader program.
+        GLES20.glLinkProgram(sprayPaintProgram);
+        checkGlError("Error linking the shader program");
+
+        return sprayPaintProgram;
+    }
+
     private void checkGlError(String msg) {
         int error;
         while ((error = GLES20.glGetError()) != GLES20.GL_NO_ERROR) {
             GLException exception = new GLException(error, msg);
-            Log.e(TAG, "GlContext error:", exception);
+            Log.e(TAG, "OpenGl error: " + error, exception);
             throw exception;
         }
     }

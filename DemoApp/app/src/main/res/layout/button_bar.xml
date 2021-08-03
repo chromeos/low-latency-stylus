@@ -68,6 +68,34 @@
         app:layout_constraintStart_toEndOf="@+id/button_green"
         app:srcCompat="@drawable/circle_blue" />
 
+    <ImageButton
+        android:id="@+id/button_brush_normal"
+        android:layout_width="80dp"
+        android:layout_height="80dp"
+        android:layout_marginEnd="16dp"
+        android:layout_marginBottom="20dp"
+        android:background="@drawable/brush_not_selected"
+        android:contentDescription="@string/accessibility_brush_normal"
+        android:padding="6dp"
+        android:scaleType="fitXY"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toStartOf="@+id/button_brush_spray"
+        app:srcCompat="@drawable/brush_normal_small" />
+
+    <ImageButton
+        android:id="@+id/button_brush_spray"
+        android:layout_width="80dp"
+        android:layout_height="80dp"
+        android:layout_marginEnd="16dp"
+        android:layout_marginBottom="20dp"
+        android:background="@drawable/brush_not_selected"
+        android:contentDescription="@string/accessibility_brush_spray"
+        android:padding="4dp"
+        android:scaleType="fitXY"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:srcCompat="@drawable/brush_spray_small" />
+
     <TextView
         android:id="@+id/text_label_prediction"
         android:layout_width="wrap_content"

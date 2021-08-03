@@ -38,8 +38,11 @@ import dev.chromeos.lowlatencystylusdemo.cpu.SampleInkView;
 
 public class LowLatencyStylusActivityCpuCompare extends AppCompatActivity {
     // Brush buttons
-    private final int NUM_BRUSHES = 4;
+    private final int NUM_BRUSH_COLORS = 4;
     private final int BRUSH_BLACK = 0, BRUSH_RED = 1, BRUSH_GREEN = 2, BRUSH_BLUE = 3;
+    private final ImageButton[] brushColorButtons = new ImageButton[NUM_BRUSH_COLORS];
+    private final int NUM_BRUSHES = 2;
+    private final int BRUSH_NORMAL = 0, BRUSH_SPRAY = 1;
     private final ImageButton[] brushButtons = new ImageButton[NUM_BRUSHES];
 
     // Brush paints
@@ -93,23 +96,30 @@ public class LowLatencyStylusActivityCpuCompare extends AppCompatActivity {
         // Add overlay on top of the base canvas
         lowLatencyCanvas.addView(overlayView);
 
-        // Set up brush buttons
-        brushButtons[BRUSH_BLACK] = findViewById(R.id.button_black);
-        brushButtons[BRUSH_RED] = findViewById(R.id.button_red);
-        brushButtons[BRUSH_GREEN] = findViewById(R.id.button_green);
-        brushButtons[BRUSH_BLUE] = findViewById(R.id.button_blue);
-        for (int n = 0; n < NUM_BRUSHES; n++) {
+        // Set up the brush buttons
+        brushButtons[BRUSH_NORMAL] = findViewById(R.id.button_brush_normal);
+        brushButtons[BRUSH_SPRAY] = findViewById(R.id.button_brush_spray);
+        brushButtons[BRUSH_NORMAL].setBackground(ContextCompat.getDrawable(
+                this, R.drawable.brush_selected));
+        brushButtons[BRUSH_SPRAY].setVisibility(View.GONE);
+
+        // Set up the brush color buttons
+        brushColorButtons[BRUSH_BLACK] = findViewById(R.id.button_black);
+        brushColorButtons[BRUSH_RED] = findViewById(R.id.button_red);
+        brushColorButtons[BRUSH_GREEN] = findViewById(R.id.button_green);
+        brushColorButtons[BRUSH_BLUE] = findViewById(R.id.button_blue);
+        for (int n = 0; n < NUM_BRUSH_COLORS; n++) {
             int selectedBrush = n;
-            brushButtons[n].setOnClickListener(new View.OnClickListener() {
+            brushColorButtons[n].setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View view) {
-                    selectBrush(selectedBrush);
+                    selectBrushColor(selectedBrush);
                 }
             });
         }
 
         // Start with black brush selected
-        selectBrush(BRUSH_BLACK);
+        selectBrushColor(BRUSH_BLACK);
 
         // Set up the prediction target slider
         Slider sliderPrediction = findViewById(R.id.slider_prediction);
@@ -148,42 +158,42 @@ public class LowLatencyStylusActivityCpuCompare extends AppCompatActivity {
     }
 
     /**
-     * Set the brush color and highlight the selected brush in the button bar.
+     * Set the brush color and highlight the selected brush color in the button bar.
      *
      * @param selectedBrush The brush that has just been selected
      */
-    private void selectBrush(int selectedBrush) {
+    private void selectBrushColor(int selectedBrush) {
         switch (selectedBrush) {
             case BRUSH_RED:
                 mRegularCanvas.setCurrentPaint(PAINT_RED);
                 mBaseView.setInkPaint(PAINT_RED);
                 mInkDelegate.setInkPaint(PAINT_RED);
-                brushButtons[BRUSH_BLACK].setBackgroundColor(Color.TRANSPARENT);
-                brushButtons[BRUSH_RED].setBackground(ContextCompat.getDrawable(
+                brushColorButtons[BRUSH_BLACK].setBackgroundColor(Color.TRANSPARENT);
+                brushColorButtons[BRUSH_RED].setBackground(ContextCompat.getDrawable(
                         this, R.drawable.selected_circle));
-                brushButtons[BRUSH_GREEN].setBackgroundColor(Color.TRANSPARENT);
-                brushButtons[BRUSH_BLUE].setBackgroundColor(Color.TRANSPARENT);
+                brushColorButtons[BRUSH_GREEN].setBackgroundColor(Color.TRANSPARENT);
+                brushColorButtons[BRUSH_BLUE].setBackgroundColor(Color.TRANSPARENT);
                 break;
 
             case BRUSH_GREEN:
                 mRegularCanvas.setCurrentPaint(PAINT_GREEN);
                 mBaseView.setInkPaint(PAINT_GREEN);
                 mInkDelegate.setInkPaint(PAINT_GREEN);
-                brushButtons[BRUSH_BLACK].setBackgroundColor(Color.TRANSPARENT);
-                brushButtons[BRUSH_RED].setBackgroundColor(Color.TRANSPARENT);
-                brushButtons[BRUSH_GREEN].setBackground(ContextCompat.getDrawable(
+                brushColorButtons[BRUSH_BLACK].setBackgroundColor(Color.TRANSPARENT);
+                brushColorButtons[BRUSH_RED].setBackgroundColor(Color.TRANSPARENT);
+                brushColorButtons[BRUSH_GREEN].setBackground(ContextCompat.getDrawable(
                         this, R.drawable.selected_circle));
-                brushButtons[BRUSH_BLUE].setBackgroundColor(Color.TRANSPARENT);
+                brushColorButtons[BRUSH_BLUE].setBackgroundColor(Color.TRANSPARENT);
                 break;
 
             case BRUSH_BLUE:
                 mRegularCanvas.setCurrentPaint(PAINT_BLUE);
                 mBaseView.setInkPaint(PAINT_BLUE);
                 mInkDelegate.setInkPaint(PAINT_BLUE);
-                brushButtons[BRUSH_BLACK].setBackgroundColor(Color.TRANSPARENT);
-                brushButtons[BRUSH_RED].setBackgroundColor(Color.TRANSPARENT);
-                brushButtons[BRUSH_GREEN].setBackgroundColor(Color.TRANSPARENT);
-                brushButtons[BRUSH_BLUE].setBackground(ContextCompat.getDrawable(
+                brushColorButtons[BRUSH_BLACK].setBackgroundColor(Color.TRANSPARENT);
+                brushColorButtons[BRUSH_RED].setBackgroundColor(Color.TRANSPARENT);
+                brushColorButtons[BRUSH_GREEN].setBackgroundColor(Color.TRANSPARENT);
+                brushColorButtons[BRUSH_BLUE].setBackground(ContextCompat.getDrawable(
                         this, R.drawable.selected_circle));
                 break;
 
@@ -192,11 +202,11 @@ public class LowLatencyStylusActivityCpuCompare extends AppCompatActivity {
                 mRegularCanvas.setCurrentPaint(PAINT_BLACK);
                 mBaseView.setInkPaint(PAINT_BLACK);
                 mInkDelegate.setInkPaint(PAINT_BLACK);
-                brushButtons[BRUSH_BLACK].setBackground(ContextCompat.getDrawable(
+                brushColorButtons[BRUSH_BLACK].setBackground(ContextCompat.getDrawable(
                         this, R.drawable.selected_circle));
-                brushButtons[BRUSH_RED].setBackgroundColor(Color.TRANSPARENT);
-                brushButtons[BRUSH_GREEN].setBackgroundColor(Color.TRANSPARENT);
-                brushButtons[BRUSH_BLUE].setBackgroundColor(Color.TRANSPARENT);
+                brushColorButtons[BRUSH_RED].setBackgroundColor(Color.TRANSPARENT);
+                brushColorButtons[BRUSH_GREEN].setBackgroundColor(Color.TRANSPARENT);
+                brushColorButtons[BRUSH_BLUE].setBackgroundColor(Color.TRANSPARENT);
                 break;
         }
     }
