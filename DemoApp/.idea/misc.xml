@@ -4,10 +4,13 @@
     <option name="filePathToZoomLevelMap">
       <map>
         <entry key="app/src/main/res/drawable/box_border.xml" value="0.30625" />
+        <entry key="app/src/main/res/drawable/brush_not_selected.xml" value="0.22083333333333333" />
+        <entry key="app/src/main/res/drawable/brush_selected.xml" value="0.3859375" />
         <entry key="app/src/main/res/drawable/circle_black.xml" value="0.3484375" />
         <entry key="app/src/main/res/drawable/circle_blue.xml" value="0.3484375" />
         <entry key="app/src/main/res/drawable/circle_green.xml" value="0.3484375" />
         <entry key="app/src/main/res/drawable/circle_red.xml" value="0.3484375" />
+        <entry key="app/src/main/res/drawable/not_selected_circle.xml" value="0.3859375" />
         <entry key="app/src/main/res/drawable/selected_circle.xml" value="0.30625" />
         <entry key="app/src/main/res/layout/activity_main.xml" value="0.2" />
         <entry key="app/src/main/res/layout/button_bar.xml" value="0.22" />

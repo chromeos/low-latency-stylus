@@ -14,19 +14,27 @@
  * limitations under the License.
  */
 
-// Top-level build file where you can add configuration options common to all sub-projects/modules.
-buildscript {
-    repositories {
-        google()
-        mavenCentral()
-    }
-    dependencies {
-        classpath 'com.android.tools.build:gradle:7.0.0-rc01'
-        // NOTE: Do not place your application dependencies here; they belong
-        // in the individual module build.gradle files
-    }
-}
+package dev.chromeos.lowlatencystylusdemo.gpu;
 
-task clean(type: Delete) {
-    delete rootProject.buildDir
+import android.graphics.PointF;
+
+public class DrawPoint {
+    public PointF point = new PointF(0f, 0f);
+    public float red = 0f;
+    public float green = 0f;
+    public float blue = 0f;
+
+    public DrawPoint(PointF point) {
+        this.point = point;
+    }
+    public DrawPoint(float x, float y) {
+        this.point.x = x;
+        this.point.y = y;
+    }
+    public DrawPoint(PointF point, float red, float green, float blue) {
+        this.point = point;
+        this.red = red;
+        this.green = green;
+        this.blue = blue;
+    }
 }

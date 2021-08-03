@@ -17,11 +17,12 @@
 package dev.chromeos.lowlatencystylusdemo.gpu;
 
 import android.content.Context;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.PointF;
 import android.graphics.Rect;
 import android.opengl.GLES20;
 import android.opengl.Matrix;
-import android.util.Log;
 import android.view.MotionEvent;
 
 import androidx.annotation.NonNull;
@@ -35,6 +36,8 @@ import java.util.List;
 
 import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.opengles.GL10;
+
+import dev.chromeos.lowlatencystylusdemo.R;
 
 /**
  * A low-latency SurfaceView that will manage input events and queue them appropriately to
@@ -96,8 +99,17 @@ public class SampleGLInkSurfaceView extends GLInkSurfaceView {
         return true;
     }
 
+    public void enableSprayPaint(boolean enableSprayPaint) {
+        mRenderer.enableSprayPaint(enableSprayPaint);
+    }
+
     public void clear() {
         queueEvent(mRenderer::clear);
+        requestRender();
+    }
+
+    public void redrawAll() {
+        queueEvent(mRenderer::redrawAll);
         requestRender();
     }
 
@@ -112,6 +124,9 @@ public class SampleGLInkSurfaceView extends GLInkSurfaceView {
 
         // The brush shader
         private BrushShader mBrushShader;
+        // Spray paint bitmap
+        private final Bitmap mSprayPaintBitmap;
+
         // Keeps track of the current damaged area
         private final InkGLSurfaceScissor mScissor = new InkGLSurfaceScissor();
 
@@ -122,6 +137,9 @@ public class SampleGLInkSurfaceView extends GLInkSurfaceView {
             mPrevPredictionDamageRect = new Rect(0, 0, 0, 0);
             // For this demo, use the identity matrix
             Matrix.setIdentityM(mModelMatrix, 0);
+
+            // Load spray paint brush bitmap
+            mSprayPaintBitmap = BitmapFactory.decodeResource(getResources(), R.drawable.spray_brush);
         }
 
         @Override
@@ -132,6 +150,17 @@ public class SampleGLInkSurfaceView extends GLInkSurfaceView {
             }
             // For this demo, use the identity matrix
             Matrix.setIdentityM(mModelMatrix, 0);
+        }
+
+        public void enableSprayPaint(boolean enableSprayPaint) {
+            if (mBrushShader != null) {
+                mBrushShader.enableSprayPaint(enableSprayPaint);
+            }
+        }
+
+        public void redrawAll() {
+            GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT); // Clear previous strokes
+            mScissor.addRect(new Rect(0, 0, getWidth(), getHeight()));
         }
 
         /**
@@ -153,37 +182,30 @@ public class SampleGLInkSurfaceView extends GLInkSurfaceView {
         @NonNull
         @Override
         public Rect beforeDraw(GL10 unused, MotionEvent predictedEvent) {
-            // Include the last drawn point
+            // Include the last drawn point in the damage rectangle
             addToScissor(mLastInkPoint);
-            if (predictedEvent != null && mLastInkPoint != null) {
-                // Start draw prediction from the last real point
-                PointF lastPoint = mLastInkPoint;
 
+            if (predictedEvent != null) {
                 // If there are batched historical predictions, include those
                 for (BatchedMotionEvent ev : BatchedMotionEvent.iterate(predictedEvent)) {
                     PointF batchedPoint = new PointF(ev.getCoords()[0].x, ev.getCoords()[0].y);
-
-                    // Lines will be drawn with GL_LINES so add lines in pairs of points
-                    addPredictedPoint(lastPoint, false);
                     addPredictedPoint(batchedPoint);
-
-                    lastPoint = batchedPoint;
                 }
 
                 // Add the predicted point
                 PointF predictedPoint = new PointF(predictedEvent.getX(), predictedEvent.getY());
-                addPredictedPoint(lastPoint, false);
                 addPredictedPoint(predictedPoint);
             }
-            // Get the current prediction damage rect
-            Rect newPredictionDamageRect = mScissor.getScissorBox();
+
             // Include the previous prediction area this draw to ensure old lines are overwritten
             addToScissor(mPrevPredictionDamageRect);
+            // Get the current prediction damage rect
+            Rect newPredictionDamageRect = mScissor.getScissorBox();
             // Save the current prediction damage rect for the next draw
             mPrevPredictionDamageRect = newPredictionDamageRect;
 
             // mScissor contains current prediction area + previous prediction area
-            return mScissor.getScissorBox();
+            return newPredictionDamageRect;
         }
 
         /**
@@ -196,10 +218,10 @@ public class SampleGLInkSurfaceView extends GLInkSurfaceView {
          * Add a single predicted point to the brush shader and optionally update the scissor
          */
         private void addPredictedPoint(PointF point, Boolean shouldAddToScissor) {
-            mBrushShader.addPredictionVertex(getVertexFromPoint(point));
-            if (shouldAddToScissor) {
-                addToScissor(point);
-            }
+           mBrushShader.addPredictionDrawPoint(getDrawPointFromPoint(point));
+           if (shouldAddToScissor) {
+               addToScissor(point);
+           }
         }
 
         /**
@@ -218,9 +240,13 @@ public class SampleGLInkSurfaceView extends GLInkSurfaceView {
         }
 
         @Override
-        public void onSurfaceCreated(GL10 unused, EGLConfig config) {
-            super.onSurfaceCreated(unused, config);
+        public void onSurfaceCreated(GL10 gl10, EGLConfig config) {
+            super.onSurfaceCreated(gl10, config);
             mBrushShader = new BrushShader();
+            // Initialize bitmap based shaders
+            mBrushShader.initSprayPaintTexture(gl10, mSprayPaintBitmap);
+            // Once texture is initialized, recycle the Bitmap memory
+            mSprayPaintBitmap.recycle();
         }
 
         @Override
@@ -232,38 +258,31 @@ public class SampleGLInkSurfaceView extends GLInkSurfaceView {
         void beginStroke(PointF point) {
             addToScissor(point);
             mLastInkPoint = point;
+            addVertex(point);
         }
 
         void addStrokes(List<PointF> points) {
-            if (mLastInkPoint == null) {
-                return;
-            }
             // Make sure scissor includes previous prediction area
             addToScissor(mPrevPredictionDamageRect);
 
-            // Add new points, starting from the last drawn point
-            addToScissor(mLastInkPoint);
+            // Add new points
             for (PointF p : points) {
                 addToScissor(p);
-                addVertex(mLastInkPoint);
                 addVertex(p);
                 mLastInkPoint = p;
             }
         }
 
         void endStroke(PointF point) {
-            if (mLastInkPoint == null) {
-                return;
-            }
             // Make sure scissor includes the previous prediction areas
             addToScissor(mPrevPredictionDamageRect);
-            // Add the line from the previous point to the last point of the gesture
-            addToScissor(mLastInkPoint);
+            // Add point
             addToScissor(point);
-            addVertex(mLastInkPoint);
             addVertex(point);
+            mLastInkPoint = point;
 
-            mLastInkPoint = null;
+            // Tell the brush shader this was the end of a stroke
+            mBrushShader.endLine();
         }
 
         private void addToScissor(PointF point) {
@@ -279,28 +298,27 @@ public class SampleGLInkSurfaceView extends GLInkSurfaceView {
             }
         }
 
+        // Add the point to the brush shader's draw list
         private void addVertex(PointF point) {
-            mBrushShader.addVertex(getVertexFromPoint(point));
+            mBrushShader.addDrawPoint(getDrawPointFromPoint(point));
         }
 
         /**
-         * Convert an x,y PointF into a {@link BrushShader.Vertex} using the current brush color
+         * Convert an x,y PointF into a {@link DrawPoint} using the current brush color
          *
          * @param point The point to convert to a Vertex
-         * @return The Vertex with x,y,r,g,b info set
+         * @return The DrawPoint with x,y,r,g,b info set
          */
-        private BrushShader.Vertex getVertexFromPoint(PointF point) {
+        private DrawPoint getDrawPointFromPoint(PointF point) {
             // Apply the inverse transform to the input point, because the canvas is shifted.
             float[] inverseView = new float[16];
             Matrix.invertM(inverseView, 0, mModelMatrix, 0);
             PointF p = applyMatrixToPoint(inverseView, point);
 
-            // Create the Vertex
-            BrushShader.Vertex vertex = new BrushShader.Vertex(p.x, p.y);
-            // Set the color to be the current paint color
-            vertex.setColor(mBrushColor[0], mBrushColor[1], mBrushColor[2]);
+            // Create the DrawPoint
+            DrawPoint drawPoint = new DrawPoint(p, mBrushColor[0], mBrushColor[1], mBrushColor[2]);
 
-            return vertex;
+            return drawPoint;
         }
 
         private void updateMVPMatrix() {

@@ -19,6 +19,8 @@ package dev.chromeos.lowlatencystylusdemo.gpu.gpu_compare;
 import static dev.chromeos.lowlatencystylusdemo.gpu.SampleGLInkSurfaceView.INK_COLOR_BLACK;
 
 import android.content.Context;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.PointF;
 import android.opengl.EGL14;
 import android.opengl.GLES20;
@@ -37,7 +39,10 @@ import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.egl.EGLDisplay;
 import javax.microedition.khronos.opengles.GL10;
 
+import dev.chromeos.lowlatencystylusdemo.R;
 import dev.chromeos.lowlatencystylusdemo.gpu.BrushShader;
+import dev.chromeos.lowlatencystylusdemo.gpu.DrawPoint;
+import dev.chromeos.lowlatencystylusdemo.gpu.DrawPoints;
 
 
 public class RegularCanvasSurfaceView extends GLSurfaceView {
@@ -87,8 +92,16 @@ public class RegularCanvasSurfaceView extends GLSurfaceView {
         return true;
     }
 
+    public void enableSprayPaint(boolean enableSprayPaint) {
+        mRenderer.enableSprayPaint(enableSprayPaint);
+    }
+
     public void clear() {
         queueEvent(mRenderer::clear);
+        requestRender();
+    }
+
+    public void redrawAll() {
         requestRender();
     }
 
@@ -100,13 +113,14 @@ public class RegularCanvasSurfaceView extends GLSurfaceView {
         private final float[] mProjectionMatrix;
         private final float[] mViewMatrix;
         private final float[] mMVPMatrix;
-        private PointF mLastInkPoint;
 
         private int mWidth;
         private int mHeight;
 
         // The brush shader
         private BrushShader mBrushShader;
+        // Spray paint bitmap
+        private final Bitmap mSprayPaintBitmap;
 
         RegularInkRenderer() {
             super();
@@ -119,6 +133,9 @@ public class RegularCanvasSurfaceView extends GLSurfaceView {
             Matrix.setIdentityM(mProjectionMatrix, 0);
             Matrix.setIdentityM(mViewMatrix, 0);
             Matrix.setIdentityM(mMVPMatrix, 0);
+
+            // Load spray paint brush bitmap
+            mSprayPaintBitmap = BitmapFactory.decodeResource(getResources(), R.drawable.spray_brush);
         }
 
         public void clear() {
@@ -128,43 +145,41 @@ public class RegularCanvasSurfaceView extends GLSurfaceView {
             }
         }
 
-
-        void beginStroke(PointF point) {
-            mLastInkPoint = point;
+        public void enableSprayPaint(boolean enableSprayPaint) {
+            if (mBrushShader != null) {
+                mBrushShader.enableSprayPaint(enableSprayPaint);
+            }
         }
 
-        void endStroke(PointF point) {
-            if (mLastInkPoint == null) {
-                return;
-            }
-            addVertex(mLastInkPoint);
+        void beginStroke(PointF point) {
             addVertex(point);
-            mLastInkPoint = null;
         }
 
         void addStrokes(List<PointF> points) {
-            if (mLastInkPoint == null) {
-                return;
-            }
             for (PointF p : points) {
-                addVertex(mLastInkPoint);
                 addVertex(p);
-                mLastInkPoint = p;
             }
         }
+
+        void endStroke(PointF point) {
+            addVertex(point);
+
+            // Tell the brush shader this was the end of a stroke
+            mBrushShader.endLine();
+        }
+
 
         private void addVertex(PointF point) {
-            BrushShader.Vertex vertex = getVertexFromPoint(point);
-            vertex.setColor(inkStrokeColor[0], inkStrokeColor[1], inkStrokeColor[2]);
-            mBrushShader.addVertex(vertex);
+            DrawPoint drawPoint = getDrawPointFromPoint(point);
+            mBrushShader.addDrawPoint(drawPoint);
         }
 
-        private BrushShader.Vertex getVertexFromPoint(PointF point) {
+        private DrawPoint getDrawPointFromPoint(PointF point) {
             // Apply the inverse transform to the input point, because the canvas is shifted.
             float[] inverseView = new float[16];
             Matrix.invertM(inverseView, 0, mModelMatrix, 0);
             PointF p = applyMatrixToPoint(inverseView, point);
-            return new BrushShader.Vertex(p.x, p.y);
+            return new DrawPoint(p, inkStrokeColor[0], inkStrokeColor[1], inkStrokeColor[2]);
         }
 
         private void updateMVPMatrix() {
@@ -183,8 +198,10 @@ public class RegularCanvasSurfaceView extends GLSurfaceView {
 
         @Override
         public void onSurfaceCreated(GL10 gl10, EGLConfig eglConfig) {
-            GLES20.glClearColor(0.9f, 0.9f, 0.9f, 1.f);
+            GLES20.glClearColor(1f, 1f, 1f, 1f);
             mBrushShader = new BrushShader();
+            mBrushShader.initSprayPaintTexture(gl10, mSprayPaintBitmap);
+            mSprayPaintBitmap.recycle();
         }
 
         @Override

@@ -33,6 +33,8 @@
     <string name="accessibility_brush_red">Red paint color</string>
     <string name="accessibility_brush_green">Green paint color</string>
     <string name="accessibility_brush_blue">Blue paint color</string>
+    <string name="accessibility_brush_normal">Default paint brush</string>
+    <string name="accessibility_brush_spray">Spray paint brush</string>
     <string name="accessibility_prediction">Prediction target in milliseconds</string>
     <string name="accessibility_low_latency_canvas">A low-latency drawing canvas</string>
     <string name="accessibility_regular_canvas">A regular, not low-latency, drawing canvas</string>
