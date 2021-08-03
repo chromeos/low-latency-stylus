@@ -23,6 +23,7 @@ import android.graphics.PointF;
 import android.graphics.Rect;
 import android.opengl.GLES20;
 import android.opengl.Matrix;
+import android.util.Log;
 import android.view.MotionEvent;
 
 import androidx.annotation.NonNull;
@@ -267,6 +268,12 @@ public class SampleGLInkSurfaceView extends GLInkSurfaceView {
 
             // Add new points
             for (PointF p : points) {
+                // Some devices / styli can generate a series of nearly identical points. This can
+                // smear bitmap brushes and cause unnecessary slow-downs. Do not draw a point if it
+                // is the same or nearly the same as the previous one.
+                if (arePointsClose(mLastInkPoint, p)) {
+                    continue;
+                }
                 addToScissor(p);
                 addVertex(p);
                 mLastInkPoint = p;
@@ -301,6 +308,14 @@ public class SampleGLInkSurfaceView extends GLInkSurfaceView {
         // Add the point to the brush shader's draw list
         private void addVertex(PointF point) {
             mBrushShader.addDrawPoint(getDrawPointFromPoint(point));
+        }
+
+        // Return true if sequential points are almost identical (less than 1px X and Y away)
+        private boolean arePointsClose(PointF p1, PointF p2) {
+            float diffX = Math.abs(p1.x - p2.x);
+            float diffY = Math.abs(p1.y - p2.y);
+            // We don't need the real difference (pythagoras), just if they're more than 1px apart
+            return (diffX + diffY < 2f);
         }
 
         /**

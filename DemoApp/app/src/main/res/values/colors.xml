@@ -21,5 +21,5 @@
     <color name="purple700">#3700B3</color>
     <color name="teal200">#03DAC5</color>
     <color name="table">#E3C5AC</color>
-    <color name="paper">#FFF1F1F1</color>
+    <color name="paper">#FFFFFFFF</color>
 </resources>

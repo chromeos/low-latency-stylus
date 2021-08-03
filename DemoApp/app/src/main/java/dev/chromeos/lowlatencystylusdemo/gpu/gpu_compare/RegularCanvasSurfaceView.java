@@ -113,6 +113,7 @@ public class RegularCanvasSurfaceView extends GLSurfaceView {
         private final float[] mProjectionMatrix;
         private final float[] mViewMatrix;
         private final float[] mMVPMatrix;
+        private PointF mLastInkPoint;
 
         private int mWidth;
         private int mHeight;
@@ -153,25 +154,40 @@ public class RegularCanvasSurfaceView extends GLSurfaceView {
 
         void beginStroke(PointF point) {
             addVertex(point);
+            mLastInkPoint = point;
         }
 
         void addStrokes(List<PointF> points) {
             for (PointF p : points) {
+                // Some devices / styli can generate a series of nearly identical points. This can
+                // smear bitmap brushes and cause unnecessary slow-downs. Do not draw a point if it
+                // is the same or nearly the same as the previous one.
+                if (arePointsClose(mLastInkPoint, p)) {
+                    continue;
+                }
                 addVertex(p);
+                mLastInkPoint = p;
             }
         }
 
         void endStroke(PointF point) {
             addVertex(point);
-
+            mLastInkPoint = point;
             // Tell the brush shader this was the end of a stroke
             mBrushShader.endLine();
         }
 
-
         private void addVertex(PointF point) {
             DrawPoint drawPoint = getDrawPointFromPoint(point);
             mBrushShader.addDrawPoint(drawPoint);
+        }
+
+        // Return true if sequential points are almost identical (less than 1px X and Y away)
+        private boolean arePointsClose(PointF p1, PointF p2) {
+            float diffX = Math.abs(p1.x - p2.x);
+            float diffY = Math.abs(p1.y - p2.y);
+            // We don't need the real difference (pythagoras), just if they're more than 1px apart
+            return !(diffX + diffY > 2f);
         }
 
         private DrawPoint getDrawPointFromPoint(PointF point) {
@@ -198,7 +214,6 @@ public class RegularCanvasSurfaceView extends GLSurfaceView {
 
         @Override
         public void onSurfaceCreated(GL10 gl10, EGLConfig eglConfig) {
-            GLES20.glClearColor(1f, 1f, 1f, 1f);
             mBrushShader = new BrushShader();
             mBrushShader.initSprayPaintTexture(gl10, mSprayPaintBitmap);
             mSprayPaintBitmap.recycle();
@@ -209,7 +224,6 @@ public class RegularCanvasSurfaceView extends GLSurfaceView {
             mWidth = width;
             mHeight = height;
             mBrushShader.clear();
-            GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT);
         }
 
         @Override
