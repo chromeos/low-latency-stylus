@@ -1,8 +1,8 @@
 # Low-Latency Stylus for Chrome OS
 
-Alpha 1.0.2
+Alpha 1.0.3
 
-Updated 4 August 2021
+Updated 5 August 2021
 
 A low-latency stylus library for Android apps on Chrome OS. This library
 provides mechanisms to reduce the touch-to-draw latency on Chrome
@@ -227,7 +227,7 @@ handle the actual rendering of brush strokes received from the
 simple line brush (GL_LINES) as well as a bitmap-based brush shader.
 
 To try your own bitmap files with the demo, create a 100x100px bitmap
-file with 0% alpha for blank areas and 100% alpha for areas to paint.
+file with 0% alpha for blank areas and non-0% alpha for areas to paint.
 
 >**Note:** currently, changing between the line shader and the brush
 > shader will re-draw all previous strokes with the newly selected
@@ -272,13 +272,6 @@ Note: pressing `[SPACE]` will clear the canvas in the demo application.
   needs to have their Chrome OS display resolution set to the “default”
   value. With other settings, additional GPU calculations may be needed
   to scale the output which makes direct rendering not possible.
-
-* Alpha in GPU brush shaders: due to direct rendering onto the front-
-  buffer, using gradient alpha in GPU shaders can lead to unintentional
-  darkening/lightening of previous strokes recorded in the back-buffer.
-  The current implementation works best with either 0% or 100% alpha for
-  GPU-based brush shaders.
-
 
 ## Feedback and Bugs
 
