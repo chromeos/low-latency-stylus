@@ -15,112 +15,156 @@
   ~ limitations under the License.
   -->
 
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<layout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    xmlns:tools="http://schemas.android.com/tools">
 
-    <ImageButton
-        android:id="@+id/button_black"
-        android:layout_width="80dp"
-        android:layout_height="80dp"
-        android:layout_marginStart="16dp"
-        android:layout_marginBottom="16dp"
-        android:padding="4dp"
-        android:contentDescription="@string/accessibility_brush_black"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:srcCompat="@drawable/circle_black" />
+    <data>
+        <variable name="gpuLatency" type="String"/>
+    </data>
 
-    <ImageButton
-        android:id="@+id/button_red"
-        android:layout_width="80dp"
-        android:layout_height="80dp"
-        android:layout_marginStart="16dp"
-        android:layout_marginBottom="16dp"
-        android:padding="4dp"
-        android:contentDescription="@string/accessibility_brush_red"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintStart_toEndOf="@+id/button_black"
-        app:srcCompat="@drawable/circle_red" />
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
 
-    <ImageButton
-        android:id="@+id/button_green"
-        android:layout_width="80dp"
-        android:layout_height="80dp"
-        android:layout_marginStart="16dp"
-        android:layout_marginBottom="16dp"
-        android:padding="4dp"
-        android:contentDescription="@string/accessibility_brush_green"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintStart_toEndOf="@+id/button_red"
-        app:srcCompat="@drawable/circle_green" />
+        <ImageButton
+            android:id="@+id/button_black"
+            android:layout_width="80dp"
+            android:layout_height="80dp"
+            android:layout_marginStart="16dp"
+            android:layout_marginBottom="16dp"
+            android:padding="4dp"
+            android:contentDescription="@string/accessibility_brush_black"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:srcCompat="@drawable/circle_black" />
 
-    <ImageButton
-        android:id="@+id/button_blue"
-        android:layout_width="80dp"
-        android:layout_height="80dp"
-        android:layout_marginStart="16dp"
-        android:layout_marginBottom="16dp"
-        android:padding="4dp"
-        android:contentDescription="@string/accessibility_brush_blue"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintStart_toEndOf="@+id/button_green"
-        app:srcCompat="@drawable/circle_blue" />
+        <ImageButton
+            android:id="@+id/button_red"
+            android:layout_width="80dp"
+            android:layout_height="80dp"
+            android:layout_marginStart="16dp"
+            android:layout_marginBottom="16dp"
+            android:padding="4dp"
+            android:contentDescription="@string/accessibility_brush_red"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintStart_toEndOf="@+id/button_black"
+            app:srcCompat="@drawable/circle_red" />
 
-    <ImageButton
-        android:id="@+id/button_brush_normal"
-        android:layout_width="80dp"
-        android:layout_height="80dp"
-        android:layout_marginEnd="16dp"
-        android:layout_marginBottom="20dp"
-        android:background="@drawable/brush_not_selected"
-        android:contentDescription="@string/accessibility_brush_normal"
-        android:padding="6dp"
-        android:scaleType="fitXY"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toStartOf="@+id/button_brush_spray"
-        app:srcCompat="@drawable/brush_normal_small" />
+        <ImageButton
+            android:id="@+id/button_green"
+            android:layout_width="80dp"
+            android:layout_height="80dp"
+            android:layout_marginStart="16dp"
+            android:layout_marginBottom="16dp"
+            android:padding="4dp"
+            android:contentDescription="@string/accessibility_brush_green"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintStart_toEndOf="@+id/button_red"
+            app:srcCompat="@drawable/circle_green" />
 
-    <ImageButton
-        android:id="@+id/button_brush_spray"
-        android:layout_width="80dp"
-        android:layout_height="80dp"
-        android:layout_marginEnd="16dp"
-        android:layout_marginBottom="20dp"
-        android:background="@drawable/brush_not_selected"
-        android:contentDescription="@string/accessibility_brush_spray"
-        android:padding="4dp"
-        android:scaleType="fitXY"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:srcCompat="@drawable/brush_spray_small" />
+        <ImageButton
+            android:id="@+id/button_blue"
+            android:layout_width="80dp"
+            android:layout_height="80dp"
+            android:layout_marginStart="16dp"
+            android:layout_marginBottom="16dp"
+            android:padding="4dp"
+            android:contentDescription="@string/accessibility_brush_blue"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintStart_toEndOf="@+id/button_green"
+            app:srcCompat="@drawable/circle_blue" />
 
-    <TextView
-        android:id="@+id/text_label_prediction"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="8dp"
-        android:layout_marginBottom="16dp"
-        android:text="@string/label_prediction"
-        android:textAppearance="@style/TextAppearance.AppCompat.Large"
-        app:layout_constraintBottom_toTopOf="@+id/button_black"
-        app:layout_constraintStart_toStartOf="@+id/button_black" />
+        <ImageButton
+            android:id="@+id/button_brush_normal"
+            android:layout_width="80dp"
+            android:layout_height="80dp"
+            android:layout_marginEnd="16dp"
+            android:layout_marginBottom="20dp"
+            android:background="@drawable/brush_not_selected"
+            android:contentDescription="@string/accessibility_brush_normal"
+            android:padding="6dp"
+            android:scaleType="fitXY"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toStartOf="@+id/button_brush_spray"
+            app:srcCompat="@drawable/brush_normal_small" />
 
-    <com.google.android.material.slider.Slider
-        android:id="@+id/slider_prediction"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="4dp"
-        android:stepSize="5"
-        android:textAlignment="center"
-        android:value="@integer/prediction_default"
-        android:valueFrom="@integer/prediction_min"
-        android:valueTo="@integer/prediction_max"
-        android:contentDescription="@string/accessibility_prediction"
-        app:layout_constraintBottom_toTopOf="@id/button_black"
-        app:layout_constraintEnd_toEndOf="@id/button_blue"
-        app:layout_constraintStart_toEndOf="@id/text_label_prediction" />
+        <ImageButton
+            android:id="@+id/button_brush_spray"
+            android:layout_width="80dp"
+            android:layout_height="80dp"
+            android:layout_marginEnd="16dp"
+            android:layout_marginBottom="20dp"
+            android:background="@drawable/brush_not_selected"
+            android:contentDescription="@string/accessibility_brush_spray"
+            android:padding="4dp"
+            android:scaleType="fitXY"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:srcCompat="@drawable/brush_spray_small" />
+
+        <TextView
+            android:id="@+id/text_label_prediction"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:layout_marginBottom="16dp"
+            android:text="@string/label_prediction"
+            android:textAppearance="@style/TextAppearance.AppCompat.Large"
+            app:layout_constraintBottom_toTopOf="@+id/button_black"
+            app:layout_constraintStart_toStartOf="@+id/button_black" />
+
+        <com.google.android.material.slider.Slider
+            android:id="@+id/slider_prediction"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="4dp"
+            android:stepSize="5"
+            android:textAlignment="center"
+            android:value="@integer/prediction_default"
+            android:valueFrom="@integer/prediction_min"
+            android:valueTo="@integer/prediction_max"
+            android:contentDescription="@string/accessibility_prediction"
+            app:layout_constraintBottom_toTopOf="@id/button_black"
+            app:layout_constraintEnd_toEndOf="@id/button_blue"
+            app:layout_constraintStart_toEndOf="@id/text_label_prediction" />
+
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:id="@+id/frame_latency"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:background="@drawable/square_border"
+            android:padding="8dp"
+            android:visibility="gone"
+            app:layout_constraintEnd_toEndOf="@+id/button_brush_spray"
+            app:layout_constraintTop_toTopOf="parent">
+
+            <TextView
+                android:id="@+id/text_latency_label"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:text="@string/label_latency_gpu"
+                android:textSize="18sp"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent" />
+
+            <TextView
+                android:id="@+id/text_latency_value"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:layout_marginEnd="8dp"
+                android:text="@{gpuLatency}"
+                android:textSize="18sp"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toEndOf="@id/text_latency_label"
+                app:layout_constraintTop_toTopOf="parent" />
+        </androidx.constraintlayout.widget.ConstraintLayout>
 
 
-</androidx.constraintlayout.widget.ConstraintLayout>
+    </androidx.constraintlayout.widget.ConstraintLayout>
+</layout>

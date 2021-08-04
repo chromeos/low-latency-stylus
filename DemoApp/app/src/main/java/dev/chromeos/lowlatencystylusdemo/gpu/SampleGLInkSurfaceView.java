@@ -121,7 +121,6 @@ public class SampleGLInkSurfaceView extends GLInkSurfaceView {
         private final float[] mModelMatrix;
         private final float[] mMVPMatrix;
         private PointF mLastInkPoint;
-        private Rect mPrevPredictionDamageRect;
 
         // The brush shader
         private BrushShader mBrushShader;
@@ -130,6 +129,8 @@ public class SampleGLInkSurfaceView extends GLInkSurfaceView {
 
         // Keeps track of the current damaged area
         private final InkGLSurfaceScissor mScissor = new InkGLSurfaceScissor();
+        private final InkGLSurfaceScissor mPredictionScissor = new InkGLSurfaceScissor();
+        private Rect mPrevPredictionDamageRect;
 
         SampleInkRenderer() {
             super();
@@ -160,8 +161,11 @@ public class SampleGLInkSurfaceView extends GLInkSurfaceView {
         }
 
         public void redrawAll() {
-            GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT); // Clear previous strokes
-            mScissor.addRect(new Rect(0, 0, getWidth(), getHeight()));
+            if (mBrushShader != null) {
+                GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT); // Clear previous strokes
+                mScissor.addRect(new Rect(0, 0, getWidth(), getHeight()));
+                executeDraw();
+            }
         }
 
         /**
@@ -198,15 +202,18 @@ public class SampleGLInkSurfaceView extends GLInkSurfaceView {
                 addPredictedPoint(predictedPoint);
             }
 
-            // Include the previous prediction area this draw to ensure old lines are overwritten
-            addToScissor(mPrevPredictionDamageRect);
             // Get the current prediction damage rect
-            Rect newPredictionDamageRect = mScissor.getScissorBox();
+            Rect newPredictionDamageRect = mPredictionScissor.getScissorBox();
+            // Include the previous prediction area in this draw only to ensure old lines are overwritten
+            addToScissor(mPrevPredictionDamageRect, true);
             // Save the current prediction damage rect for the next draw
             mPrevPredictionDamageRect = newPredictionDamageRect;
 
-            // mScissor contains current prediction area + previous prediction area
-            return newPredictionDamageRect;
+            // Return combined nre prediction damage + previous prediction damage
+            // Note: prediction damage will accumulate in mPredictionScissor during a stroke. This
+            // ensure that predictions are correctly cleared. mPredictionScissor is reset at the end
+            // of a stroke
+            return mPredictionScissor.getScissorBox();
         }
 
         /**
@@ -221,7 +228,7 @@ public class SampleGLInkSurfaceView extends GLInkSurfaceView {
         private void addPredictedPoint(PointF point, Boolean shouldAddToScissor) {
            mBrushShader.addPredictionDrawPoint(getDrawPointFromPoint(point));
            if (shouldAddToScissor) {
-               addToScissor(point);
+               addToScissor(point, true);
            }
         }
 
@@ -235,6 +242,10 @@ public class SampleGLInkSurfaceView extends GLInkSurfaceView {
          */
         @Override
         public void onDraw(GL10 unused, MotionEvent predictedEvent) {
+            executeDraw();
+        }
+
+        private void executeDraw() {
             updateMVPMatrix();
             mBrushShader.draw(mMVPMatrix);
             mScissor.reset();
@@ -264,7 +275,7 @@ public class SampleGLInkSurfaceView extends GLInkSurfaceView {
 
         void addStrokes(List<PointF> points) {
             // Make sure scissor includes previous prediction area
-            addToScissor(mPrevPredictionDamageRect);
+//            addToScissor(mPrevPredictionDamageRect);
 
             // Add new points
             for (PointF p : points) {
@@ -282,7 +293,7 @@ public class SampleGLInkSurfaceView extends GLInkSurfaceView {
 
         void endStroke(PointF point) {
             // Make sure scissor includes the previous prediction areas
-            addToScissor(mPrevPredictionDamageRect);
+//            addToScissor(mPrevPredictionDamageRect);
             // Add point
             addToScissor(point);
             addVertex(point);
@@ -290,18 +301,36 @@ public class SampleGLInkSurfaceView extends GLInkSurfaceView {
 
             // Tell the brush shader this was the end of a stroke
             mBrushShader.endLine();
+
+            // Clear prediction scissor which has been accumulating during the stroke to ensure
+            // all predicted strokes were cleared
+            mPredictionScissor.reset();
         }
 
         private void addToScissor(PointF point) {
+            addToScissor(point, false);
+        }
+        private void addToScissor(PointF point, boolean isPredictionPoint) {
             if (point == null) { return; }
             PointF p = applyMatrixToPoint(getViewMatrix(), point);
-            mScissor.addPoint(p.x, p.y);
+            if (isPredictionPoint) {
+                mPredictionScissor.addPoint(p.x, p.y);
+            } else {
+                mScissor.addPoint(p.x, p.y);
+            }
         }
 
         private void addToScissor(Rect rectToAdd) {
+            addToScissor(rectToAdd, false);
+        }
+        private void addToScissor(Rect rectToAdd, boolean isPredictionRect) {
             if (rectToAdd == null) { return; }
             if (!rectToAdd.isEmpty()) {
-                mScissor.addRect(rectToAdd);
+                if (isPredictionRect) {
+                    mPredictionScissor.addRect(rectToAdd);
+                } else {
+                    mScissor.addRect(rectToAdd);
+                }
             }
         }
 

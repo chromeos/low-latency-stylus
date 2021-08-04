@@ -62,11 +62,6 @@ public class BrushShader {
      * The Bitmap-based Brush shaders take in a bitmap file. For a pure black color, the fragment
      * shader uses the selected brush color and bitmap transparency. All colors in the bitmap
      * are ignored.
-     *
-     * Note: bitmap transparency is stepped to be either 0% or 100% to prevent unexpected darkening
-     * due front/back-buffer rendering.
-     *
-     * TODO: allow for proper transparency in bitmap brushes
      */
     private static final String BITMAP_BRUSH_VERTEX_SHADER =
                       "attribute vec4 a_color;\n"
@@ -90,9 +85,7 @@ public class BrushShader {
                     + "void main() {\n"
                     + "  vec4 tex_color = texture2D(texture_sampler, v_texture_coord_from_shader);\n"
                           + "  // Only use alpha value from bitmap to indicate draw area\n"
-                          + "  // Step alpha 0 or 1 to avoid unintended lightening/darkening\n"
-                          + "  float tex_alpha = step(0.4, tex_color.a);\n"
-                          + "  gl_FragColor = v_color * tex_alpha; // color the bitmap\n"
+                          + "  gl_FragColor = vec4(v_color.rgb, (tex_color.a / 3.0));\n"
                     + "}\n";
 
     // Shader programs and variable handles

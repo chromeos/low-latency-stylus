@@ -25,7 +25,7 @@ import android.graphics.Rect;
 public class InkGLSurfaceScissor {
     // Add a "border" to the render box to ensure all pixels are captured
     private static final int RENDER_BOX_OFFSET = ((int) BrushShader.BRUSH_SIZE)
-            + (int) (DrawPoints.Square.SQUARE_SIZE_PX / 4.0f);
+            + (int) (DrawPoints.Square.SQUARE_SIZE_PX / 2.0f);
     private Rect mScissorBox;
     private boolean mEmpty;
 
