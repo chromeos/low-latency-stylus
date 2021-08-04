@@ -27,9 +27,13 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
+import androidx.databinding.DataBindingUtil;
+import androidx.databinding.Observable;
+import androidx.databinding.ObservableInt;
 
 import com.google.android.material.slider.Slider;
 import dev.chromeos.lowlatencystylusdemo.R;
+import dev.chromeos.lowlatencystylusdemo.databinding.CanvasBinding;
 
 /**
  * Example app demonstrating using a GLInkSurfaceView to render to a low latency surface
@@ -46,12 +50,15 @@ public class LowLatencyStylusActivityGpu extends AppCompatActivity {
     // The main drawing canvas
     private SampleGLInkSurfaceView mGLInkSurfaceView;
 
+    // Latency measurements
+    public static ObservableInt rollinDrawLatencyMs = new ObservableInt(0);
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setTitle("Low Latency Stylus - GPU Driven");
 
-        setContentView(R.layout.canvas);
+        CanvasBinding binding = DataBindingUtil.setContentView(this, R.layout.canvas);
         FrameLayout mainCanvas = findViewById(R.id.frameMainCanvas);
 
         // Enable the Up / Back button
@@ -104,6 +111,18 @@ public class LowLatencyStylusActivityGpu extends AppCompatActivity {
                 mGLInkSurfaceView.setPredictionTargetMs(Math.round(value));
             }
         });
+
+        // Observe latency variable so changes to it will update the UI
+        /*
+        binding.canvasButtonBar.setGpuLatency(Integer.toString(rollinDrawLatencyMs.get()));
+        binding.canvasButtonBar.frameLatency.setVisibility(View.GONE);
+        rollinDrawLatencyMs.addOnPropertyChangedCallback(new Observable.OnPropertyChangedCallback() {
+            @Override
+            public void onPropertyChanged(Observable sender, int propertyId) {
+                binding.canvasButtonBar.setGpuLatency(Integer.toString(((ObservableInt) sender).get()));
+            }
+        });
+        */
     }
 
     @Override

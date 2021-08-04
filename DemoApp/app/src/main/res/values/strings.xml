@@ -21,6 +21,8 @@
     <string name="label_prediction">Prediction:</string>
     <string name="label_regular_canvas">Regular</string>
     <string name="label_low_latency_canvas">Low-Latency</string>
+    <string name="label_latency_gpu">Draw latency (ms): </string>
+    <string name="label_latency_gpu_regular">Draw latency (ms): </string>
 
     <!-- Launcher buttons -->
     <string name="button_cpu" description="The text of the cpu library activity button [CHAR_LIMIT=NONE]">Low-latency Demo (CPU driven)</string>
