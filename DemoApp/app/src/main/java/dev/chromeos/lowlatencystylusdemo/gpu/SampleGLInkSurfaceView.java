@@ -187,9 +187,6 @@ public class SampleGLInkSurfaceView extends GLInkSurfaceView {
         @NonNull
         @Override
         public Rect beforeDraw(GL10 unused, MotionEvent predictedEvent) {
-            // Include the last drawn point in the damage rectangle
-            addToScissor(mLastInkPoint);
-
             if (predictedEvent != null) {
                 // If there are batched historical predictions, include those
                 for (BatchedMotionEvent ev : BatchedMotionEvent.iterate(predictedEvent)) {
@@ -209,7 +206,7 @@ public class SampleGLInkSurfaceView extends GLInkSurfaceView {
             // Save the current prediction damage rect for the next draw
             mPrevPredictionDamageRect = newPredictionDamageRect;
 
-            // Return combined nre prediction damage + previous prediction damage
+            // Return combined new prediction damage + previous prediction damage
             // Note: prediction damage will accumulate in mPredictionScissor during a stroke. This
             // ensure that predictions are correctly cleared. mPredictionScissor is reset at the end
             // of a stroke
@@ -274,9 +271,6 @@ public class SampleGLInkSurfaceView extends GLInkSurfaceView {
         }
 
         void addStrokes(List<PointF> points) {
-            // Make sure scissor includes previous prediction area
-//            addToScissor(mPrevPredictionDamageRect);
-
             // Add new points
             for (PointF p : points) {
                 // Some devices / styli can generate a series of nearly identical points. This can
@@ -292,8 +286,6 @@ public class SampleGLInkSurfaceView extends GLInkSurfaceView {
         }
 
         void endStroke(PointF point) {
-            // Make sure scissor includes the previous prediction areas
-//            addToScissor(mPrevPredictionDamageRect);
             // Add point
             addToScissor(point);
             addVertex(point);
@@ -343,7 +335,7 @@ public class SampleGLInkSurfaceView extends GLInkSurfaceView {
         private boolean arePointsClose(PointF p1, PointF p2) {
             float diffX = Math.abs(p1.x - p2.x);
             float diffY = Math.abs(p1.y - p2.y);
-            // We don't need the real difference (pythagoras), just if they're more than 1px apart
+            // Don't calculate the real distance, just check if they're more than some distance apart
             return (diffX + diffY < 2f);
         }
 

@@ -186,7 +186,7 @@ public class RegularCanvasSurfaceView extends GLSurfaceView {
         private boolean arePointsClose(PointF p1, PointF p2) {
             float diffX = Math.abs(p1.x - p2.x);
             float diffY = Math.abs(p1.y - p2.y);
-            // We don't need the real difference (pythagoras), just if they're more than 1px apart
+            // Don't calculate the real distance, just check if they're more than some distance apart
             return !(diffX + diffY > 2f);
         }
 
