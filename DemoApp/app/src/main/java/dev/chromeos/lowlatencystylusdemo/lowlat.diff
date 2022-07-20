@@ -1,0 +1,741 @@
+Only in gpu: AutoGrowByteBuffer.java
+diff gpu/BrushShader.java /home/hadrosaur/Desktop/Development/AndroidStudioProjects/LowLatencyStylusDemo/app/src/main/java/dev/chromeos/lowlatencystylusdemo/gpu/BrushShader.java
+19,27d18
+< import static android.opengl.GLES20.GL_FLOAT;
+< import static android.opengl.GLES20.GL_TRIANGLES;
+< import static android.opengl.GLES20.GL_UNSIGNED_INT;
+< 
+< import static dev.chromeos.lowlatencystylusdemo.gpu.DrawPoints.NUM_INDICES_PER_SQUARE;
+< import static dev.chromeos.lowlatencystylusdemo.gpu.DrawPoints.TEXTURE_COLOR_SIZE;
+< import static dev.chromeos.lowlatencystylusdemo.gpu.DrawPoints.TEXTURE_COORDINATE_SIZE;
+< 
+< import android.graphics.Bitmap;
+30d20
+< import android.opengl.GLUtils;
+33c23,28
+< import javax.microedition.khronos.opengles.GL10;
+---
+> import java.nio.ByteBuffer;
+> import java.nio.ByteOrder;
+> import java.nio.FloatBuffer;
+> import java.nio.IntBuffer;
+> import java.util.ArrayList;
+> import java.util.List;
+36,38c31
+<  * Handles the OpenGL rendering of a brush stroke
+<  *
+<  * Applies the matrix transformation and colours the stroke with the a_color information
+---
+>  * Handles the OpenGL rendering of a brush stroke*
+40a34,61
+>     // A vertex in this sample is a 2D-point followed by float RGB color values, range: 0.0 - 1.0
+>     public static class Vertex {
+>         public static final int FLOAT_SIZE = 4;
+>         public static final int POSITION_DIM = 2;
+>         public static final int COLOR_DIM = 3;
+>         public static final int TOTAL_DIM = POSITION_DIM + COLOR_DIM;
+>         public static final int POSITION_SIZE = POSITION_DIM * FLOAT_SIZE;
+>         public static final int COLOR_SIZE = COLOR_DIM * FLOAT_SIZE;
+>         public static final int TOTAL_SIZE = POSITION_SIZE + COLOR_SIZE;
+>         public static final int POSITION_OFFSET = 0;
+>         public static final int COLOR_OFFSET = POSITION_OFFSET + POSITION_SIZE;
+>         public float[] data = new float[TOTAL_DIM];
+> 
+>         public Vertex(float x, float y) {
+>             data[0] = x;
+>             data[1] = y;
+>             data[2] = .0f;
+>             data[3] = .0f;
+>             data[4] = .0f;
+>         }
+> 
+>         public void setColor(float r, float g, float b) {
+>             data[2] = r;
+>             data[3] = g;
+>             data[4] = b;
+>         }
+>     }
+> 
+41a63,64
+>     private static final int DEFAULT_BUFFER_SIZE = 512;
+> 
+44c67
+<             "attribute vec4 a_color;\n"
+---
+>             "attribute vec3 a_color;\n"
+46c69
+<                     + "varying vec4 v_color;\n"
+---
+>                     + "varying vec3 v_color;\n"
+56,72c79
+<                     + "varying vec4 v_color;\n"
+<                     + "void main() {\n"
+<                     + "  gl_FragColor = v_color;\n"
+<                     + "}\n";
+< 
+<     /**
+<      * The Bitmap-based Brush shaders take in a bitmap file. For a pure black color, the fragment
+<      * shader uses the selected brush color and bitmap transparency. All colors in the bitmap
+<      * are ignored.
+<      */
+<     private static final String BITMAP_BRUSH_VERTEX_SHADER =
+<                       "attribute vec4 a_color;\n"
+<                     + "attribute vec4 a_position;\n"
+<                     + "uniform mat4 u_mvp;\n"
+<                     + "varying vec4 v_color;\n"
+<                     + "attribute vec2 a_texture_coord;\n"
+<                     + "varying vec2 v_texture_coord_from_shader;\n"
+---
+>                     + "varying vec3 v_color;\n"
+74,77c81
+<                     + "  vec4 pointPos = u_mvp * a_position;\n"
+<                     + "  v_color = a_color;\n"
+<                     + "  gl_Position = vec4(pointPos.xy, 0.0, 1.0);\n"
+<                     + "  v_texture_coord_from_shader = vec2(a_texture_coord.x, a_texture_coord.y);\n"
+---
+>                     + "  gl_FragColor = vec4(v_color, 1.0);\n"
+80,89c84,102
+<     private static final String BITMAP_BRUSH_FRAG_SHADER =
+<                   "precision mediump float;\n"
+<                 + "uniform sampler2D texture_sampler;\n"
+<                 + "varying vec4 v_color;\n"
+<                 + "varying vec2 v_texture_coord_from_shader;\n"
+<                     + "void main() {\n"
+<                     + "  vec4 tex_color = texture2D(texture_sampler, v_texture_coord_from_shader);\n"
+<                           + "  // Only use alpha value from bitmap to indicate draw area\n"
+<                           + "  gl_FragColor = vec4(v_color.rgb, (tex_color.a / 3.0));\n"
+<                     + "}\n";
+---
+>     // Shader program
+>     private final int mProgram;
+>     // Handle for "a_position".
+>     private final int mVertexAttribHandle;
+>     // Handle for "v_color".
+>     private final int mColorHandle;
+>     // Handle for "u_mvp".
+>     private final int mMVPHandle;
+> 
+>     // Reference to the buffer used by GL to draw the vertices
+>     private final int mGLVertexBufferHandle;
+>     private final List<Vertex> mPredictedVertex;
+> 
+>     // Buffer to hold Vertex's of drawn points. Will not contain predicted points
+>     private FloatBuffer mVertexBuffer;
+>     // Number of Vertex's in the current buffer
+>     private int mVertexCount;
+>     // Size (in Vertex count) currently allocated to the VertexBuffer
+>     private int mVertexBufferSize = DEFAULT_BUFFER_SIZE;
+91,120c104,106
+<     // Shader programs and variable handles
+<     private final int mLineProgram;
+<     private final int mLineVertexHandle; // a_position
+<     private final int mLineColorHandle; // a_color
+<     private final int mLineMVPHandle; // u_mvp
+< 
+<     private final int mSprayPaintProgram;
+<     private final int mSprayPaintVertexHandle; // a_position
+<     private final int mSprayPaintTextureHandle; // a_texture_coord
+<     private final int mSprayPaintColorHandle; // a_color
+<     private final int mSprayPaintMVPHandle; // u_mvp
+< 
+< 
+<     // Spraypaint bitmap texture
+<     private boolean useSprayPaint = false;
+<     private boolean isSprayPaintTextureInitialized = false;
+<     private int[] sprayPaintTextures = new int[1];
+<     public void initSprayPaintTexture(GL10 gl, Bitmap bitmap) {
+<         gl.glGenTextures(1, sprayPaintTextures, 0);
+<         gl.glBindTexture(GL10.GL_TEXTURE_2D, sprayPaintTextures[0]);
+<         gl.glTexParameterf(GL10.GL_TEXTURE_2D, GL10.GL_TEXTURE_MIN_FILTER, GL10.GL_NEAREST);
+<         gl.glTexParameterf(GL10.GL_TEXTURE_2D, GL10.GL_TEXTURE_MAG_FILTER, GL10.GL_NEAREST);
+<         gl.glTexParameterf(GL10.GL_TEXTURE_2D, GL10.GL_TEXTURE_WRAP_S, GL10.GL_CLAMP_TO_EDGE);
+<         gl.glTexParameterf(GL10.GL_TEXTURE_2D, GL10.GL_TEXTURE_WRAP_T, GL10.GL_CLAMP_TO_EDGE);
+<         gl.glClearColor(1f, 1f, 1f, 1f);
+<         gl.glEnable(GL10.GL_BLEND);
+<         gl.glBlendFunc(GL10.GL_SRC_ALPHA, GL10.GL_ONE_MINUS_SRC_ALPHA);
+<         GLUtils.texImage2D(GL10.GL_TEXTURE_2D, 0, bitmap, 0);
+<         isSprayPaintTextureInitialized = true;
+<     }
+---
+>     public BrushShader() {
+>         // List of predicted points
+>         mPredictedVertex = new ArrayList<>();
+122,132c108,117
+<     /**
+<      *
+<      * @param useSprayPaint enable or disable spraypaint
+<      * @return true if enable/disable was successful. Return false if spray paint texture has not
+<      * been previously initialized with initSprayPaintTexture
+<      */
+<     public boolean enableSprayPaint(boolean useSprayPaint) {
+<         // If spray paint bitmap not loaded, do not engage spray paint
+<         if (!isSprayPaintTextureInitialized) {
+<             useSprayPaint = false;
+<             return false;
+---
+>         // Set up the draw buffer
+>         ByteBuffer bb = ByteBuffer.allocateDirect(mVertexBufferSize * Vertex.TOTAL_SIZE);
+>         bb.order(ByteOrder.nativeOrder());
+>         mVertexBuffer = bb.asFloatBuffer();
+>         mVertexBuffer.position(0);
+> 
+>         // Create the shader program.
+>         mProgram = GLES20.glCreateProgram();
+>         if (mProgram == 0) {
+>             checkGlError("Error creating a new shader program");
+134,136d118
+<         this.useSprayPaint = useSprayPaint;
+<         return true;
+<     }
+138c120,123
+<     private final DrawPoints mDrawPoints = new DrawPoints();
+---
+>         // Load the vertex shader.
+>         final int vertexShader = loadShader(GLES20.GL_VERTEX_SHADER, VERTEX_SHADER);
+>         // Load the fragment shader.
+>         final int fragmentShader = loadShader(GLES20.GL_FRAGMENT_SHADER, FRAG_SHADER);
+140c125,127
+<     public BrushShader() {
+---
+>         // Attach the vertex shader to the shader program.
+>         GLES20.glAttachShader(mProgram, vertexShader);
+>         checkGlError("Error attaching the vertex shader");
+142,147c129,135
+<         // Create line shader and connect shader variables to handles
+<         mLineProgram = createLineShader();
+<         mLineColorHandle = GLES20.glGetAttribLocation(mLineProgram, "a_color");
+<         mLineVertexHandle = GLES20.glGetAttribLocation(mLineProgram, "a_position");
+<         mLineMVPHandle = GLES20.glGetUniformLocation(mLineProgram, "u_mvp");
+<         checkGlError("GL Get Locations");
+---
+>         // Attach the fragment shader to the shader program.
+>         GLES20.glAttachShader(mProgram, fragmentShader);
+>         checkGlError("Error attaching the fragment shader");
+> 
+>         // Link the shader program.
+>         GLES20.glLinkProgram(mProgram);
+>         checkGlError("Error linking the shader program");
+149,154c137,140
+<         // Create spray paint shader and connect shader variables to handles
+<         mSprayPaintProgram = createSprayPaintShader();
+<         mSprayPaintColorHandle = GLES20.glGetAttribLocation(mSprayPaintProgram, "a_color");
+<         mSprayPaintVertexHandle = GLES20.glGetAttribLocation(mSprayPaintProgram, "a_position");
+<         mSprayPaintTextureHandle = GLES20.glGetAttribLocation(mSprayPaintProgram, "a_texture_coord");
+<         mSprayPaintMVPHandle = GLES20.glGetUniformLocation(mSprayPaintProgram, "u_mvp");
+---
+>         // Link the shader program variables to handles
+>         mColorHandle = GLES20.glGetAttribLocation(mProgram, "a_color");
+>         mVertexAttribHandle = GLES20.glGetAttribLocation(mProgram, "a_position");
+>         mMVPHandle = GLES20.glGetUniformLocation(mProgram, "u_mvp");
+155a142,147
+> 
+>         // Allocate space for the Vertex buffer (will auto-grow as needed in addVertex)
+>         IntBuffer tmp = IntBuffer.allocate(1);
+>         GLES20.glGenBuffers(1, tmp);
+>         mGLVertexBufferHandle = tmp.get();
+>         mVertexBufferSize = DEFAULT_BUFFER_SIZE;
+161,163c153,156
+<      * mDrawPoints contains all the completed brush strokes and, separately, the predicted strokes.
+<      * Before drawing, added predicted strokes to the draw list temporarily and removed the after
+<      * the draw is finished.
+---
+>      * mVertexBuffer holds real gestures already made. mPredictedVertex holds predicted gestures
+>      * for the current stroke. Before drawing, add the predicted gestures to mVertexBuffer, draw
+>      * them, and then remove them. This wil ensure predicted gestures are "replaced" by real
+>      * gestures in the next frame.
+169c162
+<         if (mDrawPoints.count() == 0) {
+---
+>         if (mVertexCount == 0) {
+174,293c167,228
+<         int tempVertexCount = mDrawPoints.count();
+< 
+<         // Remember current position at the end of the Vertex/Square buffers
+<         int tempVertexPosition = mDrawPoints.mVertexBuffer.position();
+<         int tempSquarePosition = mDrawPoints.mSquareBuffer.position();
+<         int tempTextureColorPosition = mDrawPoints.mTextureColorBuffer.position();
+<         int tempTextureCoordinatePosition = mDrawPoints.mTextureCoordinateBuffer.position();
+<         int tempSquareIndexPosition = mDrawPoints.mSquareIndexBuffer.position();
+< 
+<         // Spray paint shader
+<         if (useSprayPaint) {
+<             // Temporarily add the predicted points to the end of the draw list
+<             mDrawPoints.addPredictedDrawPointsForDraw(mDrawPoints.mPredictedDrawPoints);
+< 
+<             GLES20.glUseProgram(mSprayPaintProgram);
+< 
+<             // Skip the error check here because "draw" is a performance critical operation
+<             // checkGlError("GL Error in draw()");
+< 
+<             // Indices for glDrawElements
+<             GLES20.glBindBuffer(GLES20.GL_ELEMENT_ARRAY_BUFFER, mDrawPoints.mGLSquareIndexBufferHandle);
+<             GLES20.glBufferData(
+<                     GLES20.GL_ELEMENT_ARRAY_BUFFER, mDrawPoints.count() * DrawPoints.SQUARE_INDICES_SIZE, mDrawPoints.mSquareIndexBuffer.getRawByteBuffer(), GLES20.GL_STATIC_DRAW);
+< 
+<             // Vertices, including the prediction
+<             GLES20.glBindBuffer(GLES20.GL_ARRAY_BUFFER, mDrawPoints.mGLSquareBufferHandle);
+<             GLES20.glBufferData(
+<                     GLES20.GL_ARRAY_BUFFER, mDrawPoints.count() * DrawPoints.Square.TOTAL_SIZE, mDrawPoints.mSquareBuffer.getRawByteBuffer(), GLES20.GL_STATIC_DRAW);
+<             GLES20.glVertexAttribPointer(
+<                     mSprayPaintVertexHandle,
+<                     2,
+<                     GL_FLOAT,
+<                     false,
+<                     0,
+<                     0);
+<             GLES20.glEnableVertexAttribArray(mSprayPaintVertexHandle);
+< 
+<             // Texture coords
+<             GLES20.glBindBuffer(GLES20.GL_ARRAY_BUFFER, mDrawPoints.mGLTextureCoordinateBufferHandle);
+<             GLES20.glBufferData(
+<                     GLES20.GL_ARRAY_BUFFER, mDrawPoints.count() * TEXTURE_COORDINATE_SIZE, mDrawPoints.mTextureCoordinateBuffer.getRawByteBuffer(), GLES20.GL_STATIC_DRAW);
+<             GLES20.glVertexAttribPointer(
+<                     mSprayPaintTextureHandle,
+<                     2,
+<                     GL_FLOAT,
+<                     false,
+<                     0,
+<                     0);
+<             GLES20.glEnableVertexAttribArray(mSprayPaintTextureHandle);
+< 
+<             // Brush colors
+<             GLES20.glBindBuffer(GLES20.GL_ARRAY_BUFFER, mDrawPoints.mGLTextureColorBufferHandle);
+<             GLES20.glBufferData(
+<                     GLES20.GL_ARRAY_BUFFER, mDrawPoints.count() * TEXTURE_COLOR_SIZE, mDrawPoints.mTextureColorBuffer.getRawByteBuffer(), GLES20.GL_STATIC_DRAW);
+<             GLES20.glVertexAttribPointer(
+<                     mSprayPaintColorHandle,
+<                     4,
+<                     GL_FLOAT,
+<                     false,
+<                     0,
+<                     0);
+<             GLES20.glEnableVertexAttribArray(mSprayPaintColorHandle);
+< 
+<             // Enable the MVP matrix
+<             GLES20.glUniformMatrix4fv(mSprayPaintMVPHandle, 1, false, matrix, 0);
+< 
+<             // Draw the bitmap textures
+<             GLES20.glActiveTexture(GL10.GL_TEXTURE0);
+<             GLES20.glBindTexture(GL10.GL_TEXTURE_2D, sprayPaintTextures[0]);
+<             GLES20.glDrawElements( GL_TRIANGLES, mDrawPoints.count() * NUM_INDICES_PER_SQUARE, GL_UNSIGNED_INT, 0);
+< 
+<             GLES20.glDisableVertexAttribArray(mSprayPaintVertexHandle);
+<             GLES20.glDisableVertexAttribArray(mSprayPaintTextureHandle);
+<             GLES20.glDisableVertexAttribArray(mSprayPaintColorHandle);
+< 
+<         } else { // Else draw with the regular line shader
+<             // Temporarily add the predicted points to the end of the draw list
+<             mDrawPoints.addPredictedVerticesForDraw(mDrawPoints.mPredictedVertices);
+< 
+<             GLES20.glUseProgram(mLineProgram);
+< 
+<             // Skip the error check here because "draw" is a performance critical operation
+<             // checkGlError("GL Error in draw()");
+< 
+<             // Draw the vertices into the GL vertex buffer, including the predicted ones
+<             // 2 * draw points for GL_LINES (each vertex needs start and finish point)
+<             GLES20.glBindBuffer(GLES20.GL_ARRAY_BUFFER, mDrawPoints.mGLVertexBufferHandle);
+<             GLES20.glBufferData(
+<                     GLES20.GL_ARRAY_BUFFER, mDrawPoints.count() * 2 * DrawPoints.Vertex.TOTAL_SIZE, mDrawPoints.mVertexBuffer.getRawByteBuffer(), GLES20.GL_STATIC_DRAW);
+< 
+<             // Prepare the triangle coordinate data
+<             GLES20.glVertexAttribPointer(
+<                     mLineVertexHandle,
+<                     DrawPoints.Vertex.POSITION_DIM,
+<                     GL_FLOAT,
+<                     false,
+<                     DrawPoints.Vertex.TOTAL_SIZE,
+<                     DrawPoints.Vertex.POSITION_OFFSET);
+<             GLES20.glEnableVertexAttribArray(mLineVertexHandle);
+< 
+<             // Color info
+<             GLES20.glVertexAttribPointer(
+<                     mLineColorHandle,
+<                     DrawPoints.Vertex.COLOR_DIM,
+<                     GL_FLOAT,
+<                     false,
+<                     DrawPoints.Vertex.TOTAL_SIZE,
+<                     DrawPoints.Vertex.COLOR_OFFSET);
+<             GLES20.glEnableVertexAttribArray(mLineColorHandle);
+< 
+<             // Enable the MVP matrix
+<             GLES20.glUniformMatrix4fv(mLineMVPHandle, 1, false, matrix, 0);
+< 
+<             // Note: OpenGL does not need to respect brush size > 1px
+<             // 2 * draw points for GL_LINES (each vertex needs start and finish point)
+<             GLES20.glLineWidth(BRUSH_SIZE);
+<             GLES20.glDrawArrays(GLES20.GL_LINES, 0, mDrawPoints.count() * 2);
+< 
+<             GLES20.glDisableVertexAttribArray(mLineVertexHandle);
+<             GLES20.glDisableVertexAttribArray(mLineColorHandle);
+---
+>         int tempCount = mVertexCount;
+>         // Current position at the end of the Vertex buffer
+>         int tempPosition = mVertexBuffer.position();
+> 
+>         // Temporarily add the predicted points to the end of list
+>         addVertices(mPredictedVertex);
+>         // Adjust count to match
+>         // mVertexCount += mPredictedVertex.size();
+> 
+>         // Rewind buffer to the beginning for the draw
+>         mVertexBuffer.position(0);
+>         // Skip the error check here because "draw" is a performance critical operation
+>         GLES20.glUseProgram(mProgram);
+> 
+>         // Draw the vertices into the GL vertex buffer, including the predicted ones
+>         GLES20.glBindBuffer(GLES20.GL_ARRAY_BUFFER, mGLVertexBufferHandle);
+>         GLES20.glBufferData(
+>                 GLES20.GL_ARRAY_BUFFER, mVertexCount * Vertex.TOTAL_SIZE, mVertexBuffer, GLES20.GL_STATIC_DRAW);
+> 
+>         // Prepare the triangle coordinate data
+>         GLES20.glVertexAttribPointer(
+>                 mVertexAttribHandle,
+>                 Vertex.POSITION_DIM,
+>                 GLES20.GL_FLOAT,
+>                 false,
+>                 Vertex.TOTAL_SIZE,
+>                 Vertex.POSITION_OFFSET);
+>         GLES20.glEnableVertexAttribArray(mVertexAttribHandle);
+> 
+>         GLES20.glVertexAttribPointer(
+>                 mColorHandle,
+>                 Vertex.COLOR_DIM,
+>                 GLES20.GL_FLOAT,
+>                 false,
+>                 Vertex.TOTAL_SIZE,
+>                 Vertex.COLOR_OFFSET);
+>         GLES20.glEnableVertexAttribArray(mColorHandle);
+>         GLES20.glUniformMatrix4fv(mMVPHandle, 1, false, matrix, 0);
+> 
+>         GLES20.glLineWidth(BRUSH_SIZE);
+>         GLES20.glDrawArrays(GLES20.GL_LINES, 0, mVertexCount);
+>         GLES20.glDisableVertexAttribArray(mVertexAttribHandle);
+>         GLES20.glDisableVertexAttribArray(mColorHandle);
+> 
+>         // Restore the original position/size of the Vertex buffer ("erasing" predicted gestures)
+>         mVertexBuffer.position(tempPosition);
+>         mVertexCount = tempCount;
+> 
+>         // Clear predicted lines after they've been drawn
+>         mPredictedVertex.clear();
+>     }
+> 
+>     // Add a Vertex to the Vertex buffer, grow as required
+>     public void addVertex(Vertex vertex) {
+>         mVertexBuffer.put(vertex.data);
+>         mVertexCount++;
+>         growSizeAndReallocate();
+>     }
+> 
+>     public void addVertices(Iterable<Vertex> vertices) {
+>         for (Vertex v : vertices) {
+>             addVertex(v);
+295,305d229
+< 
+<         // Restore the original position/size of the Vertex buffer (to remove predicted lines)
+<         mDrawPoints.mVertexBuffer.position(tempVertexPosition);
+<         mDrawPoints.mSquareBuffer.position(tempSquarePosition);
+<         mDrawPoints.mTextureCoordinateBuffer.position(tempTextureCoordinatePosition);
+<         mDrawPoints.mTextureColorBuffer.position(tempTextureColorPosition);
+<         mDrawPoints.mSquareIndexBuffer.position(tempSquareIndexPosition);
+<         mDrawPoints.count(tempVertexCount);
+< 
+<         // Clear predicted strokes from the prediction lists after they've been drawn
+<         mDrawPoints.clearPrediction();
+308,313c232,233
+<     // Pass-through functions for drawing points' buffer and array management
+<     public void addDrawPoint(DrawPoint drawPoint) {
+<         mDrawPoints.addDrawPoint(drawPoint);
+<     }
+<     public void addPredictionDrawPoint(DrawPoint drawPoint) {
+<         mDrawPoints.addPredictionDrawPoint(drawPoint);
+---
+>     public void addPredictionVertex(Vertex v) {
+>         mPredictedVertex.add(v);
+314a235,236
+> 
+>     // reset buffers
+316c238,240
+<         mDrawPoints.clear();
+---
+>         clearPrediction();
+>         mVertexBuffer.position(0);
+>         mVertexCount = 0;
+318,319c242,263
+<     public void endLine() {
+<         mDrawPoints.endStroke();
+---
+> 
+>     private void clearPrediction() {
+>         mPredictedVertex.clear();
+>     }
+> 
+>     private void growSizeAndReallocate() {
+>         if (mVertexCount < mVertexBufferSize) {
+>             return;
+>         }
+>         ByteBuffer buffer = ByteBuffer.allocateDirect(
+>                 2 * mVertexBufferSize * Vertex.TOTAL_SIZE);
+>         buffer.order(ByteOrder.nativeOrder());
+>         FloatBuffer newBuffer = buffer.asFloatBuffer();
+>         newBuffer.position(0);
+> 
+>         int oldPosition = mVertexBuffer.position();
+>         mVertexBuffer.position(0);
+>         newBuffer.put(mVertexBuffer);
+>         mVertexBuffer = newBuffer;
+>         mVertexBuffer.position(oldPosition);
+> 
+>         mVertexBufferSize = 2 * mVertexBufferSize;
+354,408d297
+<     private int createLineShader() {
+<         // Create the line shader program.
+<         int lineProgram = GLES20.glCreateProgram();
+<         if (lineProgram == 0) {
+<             checkGlError("Error creating line shader program");
+<         }
+< 
+<         // Load the vertex shader.
+<         final int vertexShader = loadShader(GLES20.GL_VERTEX_SHADER, VERTEX_SHADER);
+<         // Load the fragment shader.
+<         final int fragmentShader = loadShader(GLES20.GL_FRAGMENT_SHADER, FRAG_SHADER);
+< 
+<         // Attach the vertex shader to the shader program.
+<         GLES20.glAttachShader(lineProgram, vertexShader);
+<         checkGlError("Error attaching the vertex shader");
+< 
+<         // Attach the fragment shader to the shader program.
+<         GLES20.glAttachShader(lineProgram, fragmentShader);
+<         checkGlError("Error attaching the fragment shader");
+< 
+<         // Link the shader program.
+<         GLES20.glLinkProgram(lineProgram);
+<         checkGlError("Error linking the shader program");
+< 
+<         return lineProgram;
+<     }
+< 
+<     private int createSprayPaintShader() {
+<         // Init spray paint shader
+<         // Create the spray paint shader program.
+<         int sprayPaintProgram = GLES20.glCreateProgram();
+<         if (sprayPaintProgram == 0) {
+<             checkGlError("Error creating a spray paint shader program");
+<         }
+< 
+<         // Load the vertex shader.
+<         final int sprayVertexShader = loadShader(GLES20.GL_VERTEX_SHADER, BITMAP_BRUSH_VERTEX_SHADER);
+<         // Load the fragment shader.
+<         final int sprayFragmentShader = loadShader(GLES20.GL_FRAGMENT_SHADER, BITMAP_BRUSH_FRAG_SHADER);
+< 
+<         // Attach the vertex shader to the shader program.
+<         GLES20.glAttachShader(sprayPaintProgram, sprayVertexShader);
+<         checkGlError("Error attaching the vertex shader");
+< 
+<         // Attach the fragment shader to the shader program.
+<         GLES20.glAttachShader(sprayPaintProgram, sprayFragmentShader);
+<         checkGlError("Error attaching the fragment shader");
+< 
+<         // Link the shader program.
+<         GLES20.glLinkProgram(sprayPaintProgram);
+<         checkGlError("Error linking the shader program");
+< 
+<         return sprayPaintProgram;
+<     }
+< 
+413c302
+<             Log.e(TAG, "OpenGl error: " + error, exception);
+---
+>             Log.e(TAG, "GlContext error:", exception);
+Only in gpu: DrawPoint.java
+Only in gpu: DrawPoints.java
+Common subdirectories: gpu/gpu_compare and /home/hadrosaur/Desktop/Development/AndroidStudioProjects/LowLatencyStylusDemo/app/src/main/java/dev/chromeos/lowlatencystylusdemo/gpu/gpu_compare
+diff gpu/InkGLSurfaceScissor.java /home/hadrosaur/Desktop/Development/AndroidStudioProjects/LowLatencyStylusDemo/app/src/main/java/dev/chromeos/lowlatencystylusdemo/gpu/InkGLSurfaceScissor.java
+26,28c26,29
+<     // Add a "border" to the render box to ensure all pixels are captured
+<     private static final int RENDER_BOX_OFFSET = ((int) BrushShader.BRUSH_SIZE)
+<             + (int) (DrawPoints.Square.SQUARE_SIZE_PX / 2.0f);
+---
+>     // Add a "border" to the render box to ensure all pixels are captured, a smaller number can be
+>     // more performant but needs to be large enough to cover prediction overdraws. 2 is acceptable
+>     // prediction is disabled.
+>     private static final int RENDER_BOX_OFFSET = ((int) BrushShader.BRUSH_SIZE) + 1;
+53,61d53
+<         }
+<     }
+< 
+<     /**
+<      * Extend the current damage area to include the given Rect.
+<      */
+<     public void addRect(Rect rectToAdd) {
+<         if (!rectToAdd.isEmpty()) {
+<             mScissorBox.union(rectToAdd);
+diff gpu/LowLatencyStylusActivityGpu.java /home/hadrosaur/Desktop/Development/AndroidStudioProjects/LowLatencyStylusDemo/app/src/main/java/dev/chromeos/lowlatencystylusdemo/gpu/LowLatencyStylusActivityGpu.java
+21d20
+< import android.util.Log;
+30,32d28
+< import androidx.databinding.DataBindingUtil;
+< import androidx.databinding.Observable;
+< import androidx.databinding.ObservableInt;
+36d31
+< import dev.chromeos.lowlatencystylusdemo.databinding.CanvasBinding;
+43c38
+<     private final int NUM_BRUSH_COLORS = 4;
+---
+>     private final int NUM_BRUSHES = 4;
+45,47d39
+<     private final ImageButton[] brushColorButtons = new ImageButton[NUM_BRUSH_COLORS];
+<     private final int NUM_BRUSHES = 2;
+<     private final int BRUSH_NORMAL = 0, BRUSH_SPRAY = 1;
+51,54c43
+<     private SampleGLInkSurfaceView mGLInkSurfaceView;
+< 
+<     // Latency measurements
+<     public static ObservableInt rollinDrawLatencyMs = new ObservableInt(0);
+---
+>     private SampleLowLatencyInkGLSurfaceView mGLInkSurfaceView;
+61c50
+<         CanvasBinding binding = DataBindingUtil.setContentView(this, R.layout.canvas);
+---
+>         setContentView(R.layout.canvas);
+69c58
+<         mGLInkSurfaceView = new SampleGLInkSurfaceView(this);
+---
+>         mGLInkSurfaceView = new SampleLowLatencyInkGLSurfaceView(this);
+73,90c62,65
+<         brushColorButtons[BRUSH_BLACK] = findViewById(R.id.button_black);
+<         brushColorButtons[BRUSH_RED] = findViewById(R.id.button_red);
+<         brushColorButtons[BRUSH_GREEN] = findViewById(R.id.button_green);
+<         brushColorButtons[BRUSH_BLUE] = findViewById(R.id.button_blue);
+<         for (int n = 0; n < NUM_BRUSH_COLORS; n++) {
+<             int selectedBrush = n;
+<             brushColorButtons[n].setOnClickListener(new View.OnClickListener() {
+<                 @Override
+<                 public void onClick(View view) {
+<                     selectBrushColor(selectedBrush);
+<                 }
+<             });
+<         }
+<         // Start with black brush selected
+<         selectBrushColor(BRUSH_BLACK);
+< 
+<         brushButtons[BRUSH_NORMAL] = findViewById(R.id.button_brush_normal);
+<         brushButtons[BRUSH_SPRAY] = findViewById(R.id.button_brush_spray);
+---
+>         brushButtons[BRUSH_BLACK] = findViewById(R.id.button_black);
+>         brushButtons[BRUSH_RED] = findViewById(R.id.button_red);
+>         brushButtons[BRUSH_GREEN] = findViewById(R.id.button_green);
+>         brushButtons[BRUSH_BLUE] = findViewById(R.id.button_blue);
+100,101c75,77
+<         // Start with normal paint brush selected
+<         selectBrush(BRUSH_NORMAL);
+---
+> 
+>         // Start with black brush selected
+>         selectBrush(BRUSH_BLACK);
+114,125d89
+< 
+<         // Observe latency variable so changes to it will update the UI
+<         /*
+<         binding.canvasButtonBar.setGpuLatency(Integer.toString(rollinDrawLatencyMs.get()));
+<         binding.canvasButtonBar.frameLatency.setVisibility(View.GONE);
+<         rollinDrawLatencyMs.addOnPropertyChangedCallback(new Observable.OnPropertyChangedCallback() {
+<             @Override
+<             public void onPropertyChanged(Observable sender, int propertyId) {
+<                 binding.canvasButtonBar.setGpuLatency(Integer.toString(((ObservableInt) sender).get()));
+<             }
+<         });
+<         */
+150c114
+<      * Set the brush color and highlight the selected brush color in the button bar.
+---
+>      * Set the brush color and highlight the selected brush in the button bar.
+154c118
+<     private void selectBrushColor(int selectedBrush) {
+---
+>     private void selectBrush(int selectedBrush) {
+157,159c121,123
+<                 mGLInkSurfaceView.mBrushColor = SampleGLInkSurfaceView.INK_COLOR_RED;
+<                 brushColorButtons[BRUSH_BLACK].setBackgroundColor(Color.TRANSPARENT);
+<                 brushColorButtons[BRUSH_RED].setBackground(ContextCompat.getDrawable(
+---
+>                 mGLInkSurfaceView.mBrushColor = SampleLowLatencyInkGLSurfaceView.INK_COLOR_RED;
+>                 brushButtons[BRUSH_BLACK].setBackgroundColor(Color.TRANSPARENT);
+>                 brushButtons[BRUSH_RED].setBackground(ContextCompat.getDrawable(
+161,162c125,126
+<                 brushColorButtons[BRUSH_GREEN].setBackgroundColor(Color.TRANSPARENT);
+<                 brushColorButtons[BRUSH_BLUE].setBackgroundColor(Color.TRANSPARENT);
+---
+>                 brushButtons[BRUSH_GREEN].setBackgroundColor(Color.TRANSPARENT);
+>                 brushButtons[BRUSH_BLUE].setBackgroundColor(Color.TRANSPARENT);
+166,169c130,133
+<                 mGLInkSurfaceView.mBrushColor = SampleGLInkSurfaceView.INK_COLOR_GREEN;
+<                 brushColorButtons[BRUSH_BLACK].setBackgroundColor(Color.TRANSPARENT);
+<                 brushColorButtons[BRUSH_RED].setBackgroundColor(Color.TRANSPARENT);
+<                 brushColorButtons[BRUSH_GREEN].setBackground(ContextCompat.getDrawable(
+---
+>                 mGLInkSurfaceView.mBrushColor = SampleLowLatencyInkGLSurfaceView.INK_COLOR_GREEN;
+>                 brushButtons[BRUSH_BLACK].setBackgroundColor(Color.TRANSPARENT);
+>                 brushButtons[BRUSH_RED].setBackgroundColor(Color.TRANSPARENT);
+>                 brushButtons[BRUSH_GREEN].setBackground(ContextCompat.getDrawable(
+171c135
+<                 brushColorButtons[BRUSH_BLUE].setBackgroundColor(Color.TRANSPARENT);
+---
+>                 brushButtons[BRUSH_BLUE].setBackgroundColor(Color.TRANSPARENT);
+175,179c139,143
+<                 mGLInkSurfaceView.mBrushColor = SampleGLInkSurfaceView.INK_COLOR_BLUE;
+<                 brushColorButtons[BRUSH_BLACK].setBackgroundColor(Color.TRANSPARENT);
+<                 brushColorButtons[BRUSH_RED].setBackgroundColor(Color.TRANSPARENT);
+<                 brushColorButtons[BRUSH_GREEN].setBackgroundColor(Color.TRANSPARENT);
+<                 brushColorButtons[BRUSH_BLUE].setBackground(ContextCompat.getDrawable(
+---
+>                 mGLInkSurfaceView.mBrushColor = SampleLowLatencyInkGLSurfaceView.INK_COLOR_BLUE;
+>                 brushButtons[BRUSH_BLACK].setBackgroundColor(Color.TRANSPARENT);
+>                 brushButtons[BRUSH_RED].setBackgroundColor(Color.TRANSPARENT);
+>                 brushButtons[BRUSH_GREEN].setBackgroundColor(Color.TRANSPARENT);
+>                 brushButtons[BRUSH_BLUE].setBackground(ContextCompat.getDrawable(
+185,186c149,150
+<                 mGLInkSurfaceView.mBrushColor = SampleGLInkSurfaceView.INK_COLOR_BLACK;
+<                 brushColorButtons[BRUSH_BLACK].setBackground(ContextCompat.getDrawable(
+---
+>                 mGLInkSurfaceView.mBrushColor = SampleLowLatencyInkGLSurfaceView.INK_COLOR_BLACK;
+>                 brushButtons[BRUSH_BLACK].setBackground(ContextCompat.getDrawable(
+188,218c152,154
+<                 brushColorButtons[BRUSH_RED].setBackgroundColor(Color.TRANSPARENT);
+<                 brushColorButtons[BRUSH_GREEN].setBackgroundColor(Color.TRANSPARENT);
+<                 brushColorButtons[BRUSH_BLUE].setBackgroundColor(Color.TRANSPARENT);
+<                 break;
+<         }
+<     }
+< 
+<     /**
+<      * Set the brush type and highlight the selected brush in the button bar.
+<      *
+<      * @param selectedBrush
+<      */
+<     private void selectBrush(int selectedBrush) {
+<         switch (selectedBrush) {
+<             case BRUSH_SPRAY:
+<                 mGLInkSurfaceView.enableSprayPaint(true);
+<                 mGLInkSurfaceView.redrawAll();
+<                 brushButtons[BRUSH_NORMAL].setBackground(ContextCompat.getDrawable(
+<                         this, R.drawable.brush_not_selected));
+<                 brushButtons[BRUSH_SPRAY].setBackground(ContextCompat.getDrawable(
+<                         this, R.drawable.brush_selected));
+<                 break;
+< 
+<             default:
+<             case BRUSH_NORMAL:
+<                 mGLInkSurfaceView.enableSprayPaint(false);
+<                 mGLInkSurfaceView.redrawAll();
+<                 brushButtons[BRUSH_NORMAL].setBackground(ContextCompat.getDrawable(
+<                         this, R.drawable.brush_selected));
+<                 brushButtons[BRUSH_SPRAY].setBackground(ContextCompat.getDrawable(
+<                         this, R.drawable.brush_not_selected));
+---
+>                 brushButtons[BRUSH_RED].setBackgroundColor(Color.TRANSPARENT);
+>                 brushButtons[BRUSH_GREEN].setBackgroundColor(Color.TRANSPARENT);
+>                 brushButtons[BRUSH_BLUE].setBackgroundColor(Color.TRANSPARENT);
+Only in gpu: SampleGLInkSurfaceView.java
+Only in /home/hadrosaur/Desktop/Development/AndroidStudioProjects/LowLatencyStylusDemo/app/src/main/java/dev/chromeos/lowlatencystylusdemo/gpu: SampleLowLatencyInkGLSurfaceView.java

@@ -188,7 +188,10 @@ public class SampleGLInkSurfaceView extends GLInkSurfaceView {
         @Override
         public Rect beforeDraw(GL10 unused, MotionEvent predictedEvent) {
             if (predictedEvent != null) {
-                // If there are batched historical predictions, include those
+                // Clear previous prediction damage scissor
+                mPredictionScissor.reset();
+
+                // If there are batched historical predictions, include those points
                 for (BatchedMotionEvent ev : BatchedMotionEvent.iterate(predictedEvent)) {
                     PointF batchedPoint = new PointF(ev.getCoords()[0].x, ev.getCoords()[0].y);
                     addPredictedPoint(batchedPoint);
@@ -197,20 +200,22 @@ public class SampleGLInkSurfaceView extends GLInkSurfaceView {
                 // Add the predicted point
                 PointF predictedPoint = new PointF(predictedEvent.getX(), predictedEvent.getY());
                 addPredictedPoint(predictedPoint);
+
+                // Get the current prediction damage rect for the new prediction points
+                Rect newPredictionDamageRect = mPredictionScissor.getScissorBox();
+
+                // Include the previous prediction area in this draw only to ensure old lines are overwritten
+                addToScissor(mPrevPredictionDamageRect, true);
+
+                // Save the current prediction damage rect for the next draw
+                mPrevPredictionDamageRect = newPredictionDamageRect;
+
+                return mPredictionScissor.getScissorBox();
+
+            } else {
+                // No prediction points
+                return mScissor.getScissorBox();
             }
-
-            // Get the current prediction damage rect
-            Rect newPredictionDamageRect = mPredictionScissor.getScissorBox();
-            // Include the previous prediction area in this draw only to ensure old lines are overwritten
-            addToScissor(mPrevPredictionDamageRect, true);
-            // Save the current prediction damage rect for the next draw
-            mPrevPredictionDamageRect = newPredictionDamageRect;
-
-            // Return combined new prediction damage + previous prediction damage
-            // Note: prediction damage will accumulate in mPredictionScissor during a stroke. This
-            // ensure that predictions are correctly cleared. mPredictionScissor is reset at the end
-            // of a stroke
-            return mPredictionScissor.getScissorBox();
         }
 
         /**

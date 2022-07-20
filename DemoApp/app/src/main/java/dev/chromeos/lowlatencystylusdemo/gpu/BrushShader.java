@@ -104,7 +104,7 @@ public class BrushShader {
     // Spraypaint bitmap texture
     private boolean useSprayPaint = false;
     private boolean isSprayPaintTextureInitialized = false;
-    private int[] sprayPaintTextures = new int[1];
+    private final int[] sprayPaintTextures = new int[1];
     public void initSprayPaintTexture(GL10 gl, Bitmap bitmap) {
         gl.glGenTextures(1, sprayPaintTextures, 0);
         gl.glBindTexture(GL10.GL_TEXTURE_2D, sprayPaintTextures[0]);
@@ -173,15 +173,14 @@ public class BrushShader {
         // Current number of non-predicted points
         int tempVertexCount = mDrawPoints.count();
 
-        // Remember current position at the end of the Vertex/Square buffers
-        int tempVertexPosition = mDrawPoints.mVertexBuffer.position();
-        int tempSquarePosition = mDrawPoints.mSquareBuffer.position();
-        int tempTextureColorPosition = mDrawPoints.mTextureColorBuffer.position();
-        int tempTextureCoordinatePosition = mDrawPoints.mTextureCoordinateBuffer.position();
-        int tempSquareIndexPosition = mDrawPoints.mSquareIndexBuffer.position();
-
         // Spray paint shader
         if (useSprayPaint) {
+            // Remember current position at the end of the Square buffer
+            int tempSquarePosition = mDrawPoints.mSquareBuffer.position();
+            int tempSquareIndexPosition = mDrawPoints.mSquareIndexBuffer.position();
+            int tempTextureColorPosition = mDrawPoints.mTextureColorBuffer.position();
+            int tempTextureCoordinatePosition = mDrawPoints.mTextureCoordinateBuffer.position();
+
             // Temporarily add the predicted points to the end of the draw list
             mDrawPoints.addPredictedDrawPointsForDraw(mDrawPoints.mPredictedDrawPoints);
 
@@ -246,7 +245,16 @@ public class BrushShader {
             GLES20.glDisableVertexAttribArray(mSprayPaintTextureHandle);
             GLES20.glDisableVertexAttribArray(mSprayPaintColorHandle);
 
+            // Restore the original position at end of the Square buffer (to remove predicted lines)
+            mDrawPoints.mSquareBuffer.position(tempSquarePosition);
+            mDrawPoints.mSquareIndexBuffer.position(tempSquareIndexPosition);
+            mDrawPoints.mTextureCoordinateBuffer.position(tempTextureCoordinatePosition);
+            mDrawPoints.mTextureColorBuffer.position(tempTextureColorPosition);
+
         } else { // Else draw with the regular line shader
+            // Remember current position at the end of the Vertex buffer
+            int tempVertexPosition = mDrawPoints.mVertexBuffer.position();
+
             // Temporarily add the predicted points to the end of the draw list
             mDrawPoints.addPredictedVerticesForDraw(mDrawPoints.mPredictedVertices);
 
@@ -291,14 +299,12 @@ public class BrushShader {
 
             GLES20.glDisableVertexAttribArray(mLineVertexHandle);
             GLES20.glDisableVertexAttribArray(mLineColorHandle);
+
+            // Restore the original position of the Vertex buffer (to remove predicted lines)
+            mDrawPoints.mVertexBuffer.position(tempVertexPosition);
         }
 
-        // Restore the original position/size of the Vertex buffer (to remove predicted lines)
-        mDrawPoints.mVertexBuffer.position(tempVertexPosition);
-        mDrawPoints.mSquareBuffer.position(tempSquarePosition);
-        mDrawPoints.mTextureCoordinateBuffer.position(tempTextureCoordinatePosition);
-        mDrawPoints.mTextureColorBuffer.position(tempTextureColorPosition);
-        mDrawPoints.mSquareIndexBuffer.position(tempSquareIndexPosition);
+        // Restore non-predicted line count
         mDrawPoints.count(tempVertexCount);
 
         // Clear predicted strokes from the prediction lists after they've been drawn
