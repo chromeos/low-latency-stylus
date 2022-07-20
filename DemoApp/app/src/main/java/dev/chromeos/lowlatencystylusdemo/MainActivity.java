@@ -35,7 +35,6 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
 
         setContentView(R.layout.activity_main);
-
         Button buttonCpu = findViewById(R.id.button_cpu);
         Button buttonCpuCompare = findViewById(R.id.button_cpu_compare);
         Button buttonGpu = findViewById(R.id.button_gpu);
